@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="Rules" ToolsVersion="15.0">
+	<Include Action="Default" Path="..\..\.Global\CodeAnalysis\All-Rules-As-Error.ruleset" />
+	<Rules AnalyzerId="Microsoft.Analyzers.ManagedCodeAnalysis" RuleNamespace="Microsoft.Rules.Managed">
+		<!--
+		<Rule Id="CA1819" Action="None" />
+		<Rule Id="CA3075" Action="None" />
+		-->
+	</Rules>
+</RuleSet>

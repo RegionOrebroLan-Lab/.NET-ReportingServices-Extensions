@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Dictionary>
+	<Unrecognized>
+		<Word>aaaa</Word>
+	</Unrecognized>
+	<Words>
+		<Recognized>
+			<Word>bbbb</Word>
+		</Recognized>
+	</Words>
+</Dictionary>

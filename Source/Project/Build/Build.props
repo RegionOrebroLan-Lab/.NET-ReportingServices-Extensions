@@ -1,0 +1,27 @@
+<Project>
+	<PropertyGroup Label="Initial">
+		<Company>Region Örebro län</Company>
+		<VersionPrefix>0.0.0</VersionPrefix>
+		<VersionPrereleaseName>alpha</VersionPrereleaseName>
+	</PropertyGroup>
+	<PropertyGroup Label="Assembly">
+		<AssemblyName>RegionOrebroLan.ReportingServices</AssemblyName>
+		<AssemblyOriginatorKeyFile>$(SolutionDir).Global\Signing\StrongName.snk</AssemblyOriginatorKeyFile>
+		<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
+		<CodeAnalysisRuleSet>CodeAnalysis\Rules.ruleset</CodeAnalysisRuleSet>
+		<DelaySign>false</DelaySign>
+		<Description>Extensions/additions for System.IdentityModel.</Description>
+		<FileVersion>$(VersionPrefix).0</FileVersion>
+		<RootNamespace>$(AssemblyName)</RootNamespace>
+		<SignAssembly>true</SignAssembly>
+		<TargetFramework>net45</TargetFramework>
+		<Version>$(VersionPrefix)</Version>
+		<Version Condition="$(VersionPrereleaseName) != ''">$(Version)-$(VersionPrereleaseName)</Version>
+	</PropertyGroup>
+	<PropertyGroup Label="NuGet-Package">
+		<Authors>$(Company)</Authors>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<PackageProjectUrl>https://github.com/RegionOrebroLan/.NET-ReportingServices-Extensions/</PackageProjectUrl>
+		<PackageTags></PackageTags>
+	</PropertyGroup>
+</Project>
