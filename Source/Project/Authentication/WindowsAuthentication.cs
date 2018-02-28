@@ -40,12 +40,72 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		public virtual void GetUserInfo(out IIdentity userIdentity, out IntPtr userId)
 		{
+			// Temporary - begin
+
+			this.WindowsAuthenticationInternal.GetUserInfo(out var testUserIdentity, out var testUserId);
+
+			if(this.TraceLog != null)
+				this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
+
+			// Temporary - end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 			this.GetUserInfo(null, out userIdentity, out userId);
 		}
 
 		public virtual void GetUserInfo(IRSRequestContext requestContext, out IIdentity userIdentity, out IntPtr userId)
 		{
-			if(requestContext != null && this.TraceLog != null)
+			// Temporary - begin
+
+			this.WindowsAuthenticationInternal.GetUserInfo(requestContext, out var testUserIdentity, out var testUserId);
+
+			if (this.TraceLog != null)
+				this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
+
+			if(this.TraceLog != null)
+				this.WriteTrace("Testing verbose.", TraceLevel.Verbose);
+
+			// Temporary - end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			if (requestContext != null && this.TraceLog != null)
 				this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "The request-context-identity is \"{0}\".", requestContext.User.Name), TraceLevel.Verbose);
 
 			var httpContext = this.WebContext.HttpContext;
@@ -56,14 +116,19 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			}
 			else
 			{
-				userIdentity = null;
+				userIdentity = WindowsIdentity.GetAnonymous();
 
-				var exceptionMessage = "The The http-context is null.";
+				if(this.TraceLog != null)
+				{
+					var message = "The http-context is null.";
 
-				if(requestContext != null)
-					exceptionMessage += string.Format(CultureInfo.InvariantCulture, " The request-context-identity is \"{0}\".", requestContext.User != null ? requestContext.User.Name : "NULL");
+					if (requestContext == null)
+						message += " The request-context is null.";
+					else
+						message += string.Format(CultureInfo.InvariantCulture, " The request-context-identity is \"{0}\".", requestContext.User?.Name);
 
-				this.HandleException(new InvalidOperationException(exceptionMessage));
+					this.WriteTrace(message, TraceLevel.Warning);
+				}
 			}
 
 			var windowsIdentity = userIdentity as WindowsIdentity;
