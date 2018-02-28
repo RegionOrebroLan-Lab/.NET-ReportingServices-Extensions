@@ -42,10 +42,21 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		{
 			// Temporary - begin
 
-			this.WindowsAuthenticationInternal.GetUserInfo(out var testUserIdentity, out var testUserId);
+			try
+			{
+				this.WindowsAuthenticationInternal.GetUserInfo(out var testUserIdentity, out var testUserId);
 
-			if(this.TraceLog != null)
-				this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
+				if (this.TraceLog != null)
+					this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
+			}
+			catch(Exception exception)
+			{
+				if(this.TraceLog != null)
+					this.WriteTrace(exception.ToString(), TraceLevel.Error);
+			}
+
+			if (this.TraceLog != null)
+				this.WriteTrace("Testing verbose.", TraceLevel.Verbose);
 
 			// Temporary - end
 
@@ -74,12 +85,20 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		{
 			// Temporary - begin
 
-			this.WindowsAuthenticationInternal.GetUserInfo(requestContext, out var testUserIdentity, out var testUserId);
+			try
+			{
+				this.WindowsAuthenticationInternal.GetUserInfo(requestContext, out var testUserIdentity, out var testUserId);
+
+				if (this.TraceLog != null)
+					this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
+			}
+			catch (Exception exception)
+			{
+				if (this.TraceLog != null)
+					this.WriteTrace(exception.ToString(), TraceLevel.Error);
+			}
 
 			if (this.TraceLog != null)
-				this.WriteTrace(string.Format(CultureInfo.InvariantCulture, "From the original authentication-extension: Identity = \"{0}\", Id \"{1}\".", testUserIdentity?.Name, testUserId), TraceLevel.Warning);
-
-			if(this.TraceLog != null)
 				this.WriteTrace("Testing verbose.", TraceLevel.Verbose);
 
 			// Temporary - end
