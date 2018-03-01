@@ -12,6 +12,7 @@
 		</CodeAnalysisDictionary>
 	</ItemGroup>
 	<ItemGroup>
+	  <Reference Include="System.IdentityModel.Services" />
 	  <Reference Include="System.Web" />
 	</ItemGroup>
 	<!--
