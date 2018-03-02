@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Security.Principal;
+using System.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.Web
 {
@@ -33,19 +34,21 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 			this.Response.Write("<p>" + this.Request.Url + "</p>");
 
-			var returnUrl = this.Request.QueryString["ReturnUrl"];
+			//FormsAuthentication.RedirectFromLoginPage(this.User.Identity.Name, false);
 
-			if(Uri.TryCreate(returnUrl, UriKind.RelativeOrAbsolute, out var result))
-			{
-				this.Response.Redirect(result.IsAbsoluteUri ? result.AbsoluteUri : result.OriginalString, false);
+			//var returnUrl = this.Request.QueryString["ReturnUrl"];
 
-				return;
-			}
+			//if(Uri.TryCreate(returnUrl, UriKind.RelativeOrAbsolute, out var result))
+			//{
+			//	this.Response.Redirect(result.IsAbsoluteUri ? result.AbsoluteUri : result.OriginalString, false);
 
-			var uriBuilder = new UriBuilder(this.Request.Url) {Query = string.Empty};
-			uriBuilder.Path = uriBuilder.Path.Replace("Federation.aspx", string.Empty);
+			//	return;
+			//}
 
-			this.Response.Redirect(uriBuilder.Uri.ToString(), false);
+			//var uriBuilder = new UriBuilder(this.Request.Url) {Query = string.Empty};
+			//uriBuilder.Path = uriBuilder.Path.Replace("Federation.aspx", string.Empty);
+
+			//this.Response.Redirect(uriBuilder.Uri.ToString(), false);
 		}
 
 		#endregion

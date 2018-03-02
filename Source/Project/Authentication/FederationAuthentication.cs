@@ -22,7 +22,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		protected internal FederationAuthentication(IWebContext webContext)
 		{
 			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
-			this.WindowsAuthenticationInternal = new WindowsAuthentication();
+			this.WindowsAuthentication = new WindowsAuthentication();
 		}
 
 		#endregion
@@ -31,7 +31,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		public virtual string LocalizedName => null;
 		protected internal virtual IWebContext WebContext { get; }
-		protected internal WindowsAuthentication WindowsAuthenticationInternal { get; }
+		protected internal WindowsAuthentication WindowsAuthentication { get; }
 
 		#endregion
 
@@ -44,20 +44,27 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			if(userIdentity == null)
 				throw new InvalidOperationException("The http-context-user-identity is null.");
 
-			var windowsIdentity = userIdentity as WindowsIdentity;
-			userId = windowsIdentity?.Token ?? IntPtr.Zero;
+			// It should be IntPtr.Zero otherwhise the RegionOrebroLan.ReportingServices.Authorization.FederationAuthorization.GetPermissions(string userName, IntPtr userToken, SecurityItemType itemType, byte[] secDesc) will fail.
+			userId = IntPtr.Zero;
 		}
 
 		public virtual void GetUserInfo(IRSRequestContext requestContext, out IIdentity userIdentity, out IntPtr userId)
 		{
 			userIdentity = requestContext?.User;
-			var windowsIdentity = userIdentity as WindowsIdentity;
-			userId = windowsIdentity?.Token ?? IntPtr.Zero;
+
+			if(userIdentity == null)
+			{
+				//requestContext.Cookies.
+			}
+
+
+			// It should be IntPtr.Zero otherwhise the RegionOrebroLan.ReportingServices.Authorization.FederationAuthorization.GetPermissions(string userName, IntPtr userToken, SecurityItemType itemType, byte[] secDesc) will fail.
+			userId = IntPtr.Zero;
 		}
 
 		public virtual bool IsValidPrincipalName(string principalName)
 		{
-			return this.WindowsAuthenticationInternal.IsValidPrincipalName(principalName);
+			return this.WindowsAuthentication.IsValidPrincipalName(principalName);
 		}
 
 		public virtual bool LogonUser(string userName, string password, string authority)
