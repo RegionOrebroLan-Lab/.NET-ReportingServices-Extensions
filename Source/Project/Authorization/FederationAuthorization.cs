@@ -79,6 +79,7 @@ namespace RegionOrebroLan.ReportingServices.Authorization
 		public virtual bool CheckAccess(string userName, IntPtr userToken, byte[] secDesc, ModelOperation requiredOperation)
 		{
 			return true;
+
 			//return this.WindowsAuthorization.CheckAccess(userName, userToken, secDesc, requiredOperation);
 		}
 

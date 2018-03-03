@@ -34,7 +34,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 			this.Response.Write("<p>" + this.Request.Url + "</p>");
 
-			//FormsAuthentication.RedirectFromLoginPage(this.User.Identity.Name, false);
+			FormsAuthentication.RedirectFromLoginPage(this.User.Identity.Name, false);
 
 			//var returnUrl = this.Request.QueryString["ReturnUrl"];
 

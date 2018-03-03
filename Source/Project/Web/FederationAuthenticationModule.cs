@@ -1,52 +1,28 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
 using System.IdentityModel.Services;
+using System.Linq;
 using System.Web;
 
 namespace RegionOrebroLan.ReportingServices.Web
 {
-	public class FederationAuthenticationModule : IHttpModule
+	public class FederationAuthenticationModule : BasicHttpModule
 	{
-		#region Fields
-
-		private static readonly IWebContext _webContext = new WebContext();
-
-		#endregion
-
-		#region Constructors
-
-		public FederationAuthenticationModule() : this(_webContext) { }
-
-		protected internal FederationAuthenticationModule(IWebContext webContext)
-		{
-			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
-		}
-
-		#endregion
-
 		#region Properties
 
-		protected internal virtual IWebContext WebContext { get; }
+		protected internal virtual IHttpApplication Application { get; set; }
 
 		#endregion
 
 		#region Methods
 
-		[SuppressMessage("Usage", "CA1816:Dispose methods should call SuppressFinalize")]
-		public void Dispose()
+		public override void Initialize(IHttpApplication application)
 		{
-			this.Dispose(true);
-			GC.SuppressFinalize(this);
-		}
+			this.Application = application ?? throw new ArgumentNullException(nameof(application));
 
-		protected virtual void Dispose(bool disposing) { }
-
-		public virtual void Init(HttpApplication context)
-		{
-			var wsFederationAuthenticationModule = FederatedAuthentication.WSFederationAuthenticationModule;
+			var wsFederationAuthenticationModule = (WSFederationAuthenticationModule) application.Modules.Select(module => module.Value).FirstOrDefault(module => module is WSFederationAuthenticationModule);
 
 			if(wsFederationAuthenticationModule == null)
-				throw new InvalidOperationException("There is no WSFederationAuthenticationModule in the module-pipeline. You must add a WSFederationAuthenticationModule if ReportingServicesFederationAuthenticationModule is in the pipeline.");
+				throw new InvalidOperationException("There is no WSFederationAuthenticationModule in the module-pipeline. You must add a WSFederationAuthenticationModule if FederationAuthenticationModule is in the pipeline.");
 
 			wsFederationAuthenticationModule.RedirectingToIdentityProvider += this.OnRedirectingToIdentityProvider;
 			wsFederationAuthenticationModule.SignInError += this.OnSignInError;
@@ -62,7 +38,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 			var realmQuery = HttpUtility.ParseQueryString(realmUriBuilder.Query);
 
 			// ReSharper disable AssignNullToNotNullAttribute
-			var contextUriBuilder = new UriBuilder(this.WebContext.HttpContext.Request.Url);
+			var contextUriBuilder = new UriBuilder(this.Application.Context.Request.Url);
 			// ReSharper restore AssignNullToNotNullAttribute
 			var contextQuery = HttpUtility.ParseQueryString(contextUriBuilder.Query);
 
@@ -78,12 +54,12 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		protected internal virtual void OnSignInError(object sender, ErrorEventArgs e)
 		{
-			throw new NotImplementedException("Could not sign in.", e.Exception);
+			throw new InvalidOperationException("Could not sign in.", e.Exception);
 		}
 
 		protected internal virtual void OnSignOutError(object sender, ErrorEventArgs e)
 		{
-			throw new NotImplementedException("Could not sign out.", e.Exception);
+			throw new InvalidOperationException("Could not sign out.", e.Exception);
 		}
 
 		#endregion

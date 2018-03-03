@@ -57,7 +57,6 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 				//requestContext.Cookies.
 			}
 
-
 			// It should be IntPtr.Zero otherwhise the RegionOrebroLan.ReportingServices.Authorization.FederationAuthorization.GetPermissions(string userName, IntPtr userToken, SecurityItemType itemType, byte[] secDesc) will fail.
 			userId = IntPtr.Zero;
 		}
@@ -72,7 +71,10 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			throw new NotImplementedException();
 		}
 
-		public virtual void SetConfiguration(string configuration) { }
+		public virtual void SetConfiguration(string configuration)
+		{
+			// Get cookie-name and signing cert location (maybe)
+		}
 
 		#endregion
 	}
