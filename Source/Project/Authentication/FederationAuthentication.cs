@@ -71,6 +71,18 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 				{
 					this.Log.Info("No request-context-cookies.");
 				}
+
+				if(requestContext.Headers.Any())
+				{
+					foreach(var header in requestContext.Headers)
+					{
+						this.Log.Info("Request-context-header: " + header.Key + " = " + string.Join(", ", header.Value));
+					}
+				}
+				else
+				{
+					this.Log.Info("No request-context-headers.");
+				}
 			}
 
 			userIdentity = requestContext?.User;
