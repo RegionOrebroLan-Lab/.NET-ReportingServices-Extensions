@@ -2,28 +2,25 @@
 using System.Linq;
 using System.Security.Principal;
 using log4net;
+using Microsoft.ReportingServices.Authentication;
 using Microsoft.ReportingServices.Interfaces;
-using RegionOrebroLan.ReportingServices.InversionOfControl;
-using RegionOrebroLan.ReportingServices.Tracing;
 using RegionOrebroLan.ReportingServices.Web;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
 {
-	public class FederationAuthentication : TraceableComponent, IAuthenticationExtension2
+	public class FederationAuthentication : IAuthenticationExtension2
 	{
 		#region Fields
 
 		private static readonly ILog _log = LogManager.GetLogger(typeof(FederationAuthentication));
-		private static readonly IWebContext _webContext = ServiceLocator.Instance.GetService<IWebContext>();
-		private static readonly IWindowsAuthenticationExtension2 _windowsAuthentication = ServiceLocator.Instance.GetService<IWindowsAuthenticationExtension2>();
 
 		#endregion
 
 		#region Constructors
 
-		public FederationAuthentication() : this(_log, _webContext, _windowsAuthentication) { }
+		public FederationAuthentication() : this(_log, new WebContext(), new WindowsAuthentication()) { }
 
-		protected internal FederationAuthentication(ILog log, IWebContext webContext, IWindowsAuthenticationExtension2 windowsAuthentication)
+		public FederationAuthentication(ILog log, IWebContext webContext, IWindowsAuthenticationExtension2 windowsAuthentication)
 		{
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
 			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));

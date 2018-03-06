@@ -2,11 +2,10 @@
 using System.Collections.Specialized;
 using Microsoft.ReportingServices.Authorization;
 using Microsoft.ReportingServices.Interfaces;
-using RegionOrebroLan.ReportingServices.Tracing;
 
 namespace RegionOrebroLan.ReportingServices.Authorization
 {
-	public class FederationAuthorization : TraceableComponent, IAuthorizationExtension
+	public class FederationAuthorization : IAuthorizationExtension
 	{
 		#region Constructors
 

@@ -7,6 +7,8 @@ namespace RegionOrebroLan.ReportingServices.Web
 		#region Properties
 
 		HttpContextBase HttpContext { get; }
+		HttpRequestBase HttpRequest { get; }
+		HttpResponseBase HttpResponse { get; }
 
 		#endregion
 	}
