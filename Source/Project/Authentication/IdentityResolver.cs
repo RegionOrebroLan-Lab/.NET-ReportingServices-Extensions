@@ -5,6 +5,7 @@ using System.IdentityModel.Services;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;
+using System.Xml;
 using log4net;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
@@ -88,6 +89,22 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			}
 			catch(Exception exception)
 			{
+				if(exception is XmlException)
+				{
+					this.LogDebugIfEnabled("Xml-exception so we faik the user.", "GetIdentity");
+
+					var windowsIdentity = Microsoft.IdentityModel.WindowsTokenService.S4UClient.UpnLogon("user-name@company.com");
+
+					return new WindowsIdentity(windowsIdentity.Token, "Federation", WindowsAccountType.Normal, true);
+				}
+
+
+
+
+
+
+
+
 				var message = string.Format(CultureInfo.InvariantCulture, "Could not get identity from cookies. Available cookies: {0}.", string.Join(", ", cookies.Keys));
 				const string method = "GetIdentity";
 

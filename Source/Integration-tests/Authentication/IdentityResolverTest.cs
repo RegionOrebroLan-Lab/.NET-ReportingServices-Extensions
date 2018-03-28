@@ -44,6 +44,22 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 			Assert.IsNull(identity);
 		}
 
+		[TestMethod]
+		public void GetIdentity_Test()
+		{
+			var cookies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+			{
+				{"FedAuth", "afadsfadfs"},
+				{"FedAuth1", "adfsasdf"}
+			};
+
+			var identityResolver = this.CreateDeaultIdentityResolver();
+
+			var identity = identityResolver.GetIdentity(cookies);
+
+			Assert.IsNotNull(identity);
+		}
+
 		#endregion
 	}
 }
