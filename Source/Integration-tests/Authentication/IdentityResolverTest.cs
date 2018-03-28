@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Web.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RegionOrebroLan.ReportingServices.Authentication;
 
@@ -23,8 +24,7 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 		{
 			var cookies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				{"FedAuth", "Invalid-value"},
-				{"FedAuth1", "Invalid-value"}
+				{FormsAuthentication.FormsCookieName, "Invalid-value"}
 			};
 
 			var identityResolver = this.CreateDeaultIdentityResolver();
@@ -42,22 +42,6 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 			var identity = identityResolver.GetIdentity(new Dictionary<string, string>());
 
 			Assert.IsNull(identity);
-		}
-
-		[TestMethod]
-		public void GetIdentity_Test()
-		{
-			var cookies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-			{
-				{"FedAuth", "afadsfadfs"},
-				{"FedAuth1", "adfsasdf"}
-			};
-
-			var identityResolver = this.CreateDeaultIdentityResolver();
-
-			var identity = identityResolver.GetIdentity(cookies);
-
-			Assert.IsNotNull(identity);
 		}
 
 		#endregion

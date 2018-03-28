@@ -2,11 +2,12 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IdentityModel.Services;
-using System.Linq;
+using System.Security.Claims;
 using System.Security.Principal;
 using System.Web;
-using System.Xml;
+using System.Web.Security;
 using log4net;
+using Microsoft.IdentityModel.WindowsTokenService;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
 {
@@ -54,57 +55,43 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		public virtual IIdentity GetIdentity(IDictionary<string, string> cookies)
 		{
-			if(cookies == null)
-				throw new ArgumentNullException(nameof(cookies));
+			cookies = cookies ?? new Dictionary<string, string>();
 
-			var httpContext = this.CreateHttpContext();
-
-			foreach(var cookie in cookies)
+			if(!cookies.TryGetValue(FormsAuthentication.FormsCookieName, out string cookieValue))
 			{
-				httpContext.Request.Cookies.Add(new HttpCookie(cookie.Key, cookie.Value));
+				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "There are no relevant cookies. Available cookies: {0}.", string.Join(", ", cookies.Keys)), "GetIdentity");
+
+				return null;
 			}
 
 			try
 			{
-				var cookieBytes = this.CookieHandler.Read(this.CookieHandler.Name, httpContext);
+				var ticket = FormsAuthentication.Decrypt(cookieValue);
 
-				if(cookieBytes == null)
+				if(ticket == null)
 				{
-					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "There are no relevant cookies. Available cookies: {0}.", string.Join(", ", cookies.Keys)), "GetIdentity");
+					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" is null.", FormsAuthentication.FormsCookieName), "GetIdentity");
 
 					return null;
 				}
 
-				var sessionSecurityToken = this.ReadSessionTokenFromCookie(cookieBytes);
+				if(ticket.Expired)
+				{
+					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" has expired.", FormsAuthentication.FormsCookieName), "GetIdentity");
 
-				var claimsIdentities = this.ValidateSessionToken(sessionSecurityToken);
+					return null;
+				}
 
-				if(claimsIdentities.Count > 1)
-					throw new InvalidOperationException("There are multiple claims-identities.");
+				var windowsIdentity = S4UClient.UpnLogon(ticket.Name);
 
-				if(!(claimsIdentities.FirstOrDefault() is WindowsIdentity windowsIdentity))
-					throw new InvalidOperationException("The identity is not a windows-identity.");
+				windowsIdentity = new WindowsIdentity(windowsIdentity.Token, "Federation", WindowsAccountType.Normal, true);
+
+				windowsIdentity.AddClaim(new Claim(ClaimTypes.Upn, ticket.Name));
 
 				return windowsIdentity;
 			}
 			catch(Exception exception)
 			{
-				if(exception is XmlException)
-				{
-					this.LogDebugIfEnabled("Xml-exception so we faik the user.", "GetIdentity");
-
-					var windowsIdentity = Microsoft.IdentityModel.WindowsTokenService.S4UClient.UpnLogon("user-name@company.com");
-
-					return new WindowsIdentity(windowsIdentity.Token, "Federation", WindowsAccountType.Normal, true);
-				}
-
-
-
-
-
-
-
-
 				var message = string.Format(CultureInfo.InvariantCulture, "Could not get identity from cookies. Available cookies: {0}.", string.Join(", ", cookies.Keys));
 				const string method = "GetIdentity";
 

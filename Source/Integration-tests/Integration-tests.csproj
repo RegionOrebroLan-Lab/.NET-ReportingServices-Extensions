@@ -19,6 +19,7 @@
 	<ItemGroup>
 		<Reference Include="System.IdentityModel" />
 		<Reference Include="System.IdentityModel.Services" />
+		<Reference Include="System.Web" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Project\Project.csproj" />

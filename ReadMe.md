@@ -1,7 +1,7 @@
 # .NET-ReportingServices-Extensions
 
 ## Important
-Remember the FederationCookie branch when you move this repository. First checkin the FederationCookie branch in the new repository and branch it to FederationCookie branch in the new repository. Then checkin this master-branch to the master-branch in the new repository. Just so you save the code you have so far with decrypt/encrypt FedAuth cookie (that does not work).
+Remember the **Federation-cookies** branch when you move this repository. First checkin the **Federation-cookies** branch in the new repository and branch it to **Federation-cookies** branch in the new repository. Then checkin this master-branch to the master-branch in the new repository. Just so you save the code you have so far with decrypt/encrypt FedAuth cookie (that does not work).
 
 To be able to build this solution you have to create a NuGet-package with [**NuGet Package Explorer**](https://github.com/NuGetPackageExplorer/NuGetPackageExplorer). Do the following:
 1. Create the directory **C:\Data\NuGet-packages**

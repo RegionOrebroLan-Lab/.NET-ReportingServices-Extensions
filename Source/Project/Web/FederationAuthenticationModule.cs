@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.IdentityModel.Claims;
 using System.IdentityModel.Services;
 using System.Linq;
+using System.Security.Principal;
+using System.Web;
+using System.Web.Configuration;
+using System.Web.Security;
 using log4net;
 using RegionOrebroLan.ReportingServices.Extensions;
 
@@ -12,6 +17,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 	{
 		#region Fields
 
+		private static readonly FormsAuthenticationConfiguration _formsAuthenticationConfiguration = new FormsAuthenticationConfiguration();
 		private static readonly ILog _log = LogManager.GetLogger(typeof(FederationAuthenticationModule));
 		private static readonly IWebContext _webContext = new WebContext();
 		private static readonly IRedirectInformationFactory _redirectInformationFactory = new RedirectInformationFactory(_webContext);
@@ -33,6 +39,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Properties
 
+		protected internal virtual FormsAuthenticationConfiguration FormsAuthenticationConfiguration => _formsAuthenticationConfiguration;
 		protected internal virtual ILog Log { get; }
 		protected internal virtual IRedirectInformationFactory RedirectInformationFactory { get; }
 		protected internal virtual IWebContext WebContext { get; }
@@ -40,6 +47,19 @@ namespace RegionOrebroLan.ReportingServices.Web
 		#endregion
 
 		#region Methods
+
+		protected internal virtual FormsAuthenticationTicket CreateFormsAuthenticationTicket()
+		{
+			if(!(this.WebContext.HttpContext.User.Identity is WindowsIdentity windowsIdentity))
+				throw new InvalidOperationException("The http-context-user-identity must be a windows-identity.");
+
+			var userPrincipalNameClaim = windowsIdentity.Claims.FirstOrDefault(claim => claim.Type.Equals(ClaimTypes.Upn, StringComparison.OrdinalIgnoreCase));
+
+			if(userPrincipalNameClaim == null)
+				throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity must have a \"{0}\"-claim.", ClaimTypes.Upn));
+
+			return new FormsAuthenticationTicket(userPrincipalNameClaim.Value, false, this.FormsAuthenticationConfiguration.Timeout.Minutes);
+		}
 
 		protected internal virtual void LogDebugIfEnabled(string message, string method)
 		{
@@ -68,17 +88,9 @@ namespace RegionOrebroLan.ReportingServices.Web
 				if(!redirectInformation.Redirect)
 					return;
 
-				foreach(var name in this.WebContext.HttpRequest.Cookies.AllKeys)
-				{
-					if(this.WebContext.HttpResponse.Cookies.AllKeys.Contains(name, StringComparer.OrdinalIgnoreCase))
-						continue;
+				var formsAuthenticationTicket = this.CreateFormsAuthenticationTicket();
 
-					var cookie = this.WebContext.HttpRequest.Cookies[name];
-
-					// ReSharper disable AssignNullToNotNullAttribute
-					this.WebContext.HttpResponse.Cookies.Add(cookie);
-					// ReSharper restore AssignNullToNotNullAttribute
-				}
+				this.WebContext.HttpResponse.Cookies.Add(new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(formsAuthenticationTicket)));
 
 				var url = redirectInformation.Url.ToStringValue();
 
