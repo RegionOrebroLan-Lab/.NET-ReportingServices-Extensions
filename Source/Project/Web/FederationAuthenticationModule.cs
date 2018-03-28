@@ -2,9 +2,9 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IdentityModel.Services;
-using System.Reflection;
+using System.Linq;
 using log4net;
-using Microsoft.ReportingServices.Library;
+using RegionOrebroLan.ReportingServices.Extensions;
 
 namespace RegionOrebroLan.ReportingServices.Web
 {
@@ -13,18 +13,19 @@ namespace RegionOrebroLan.ReportingServices.Web
 		#region Fields
 
 		private static readonly ILog _log = LogManager.GetLogger(typeof(FederationAuthenticationModule));
-		private static Type _webConfigUtilType;
 		private static readonly IWebContext _webContext = new WebContext();
+		private static readonly IRedirectInformationFactory _redirectInformationFactory = new RedirectInformationFactory(_webContext);
 
 		#endregion
 
 		#region Constructors
 
-		public FederationAuthenticationModule() : this(_log, _webContext) { }
+		public FederationAuthenticationModule() : this(_log, _redirectInformationFactory, _webContext) { }
 
-		public FederationAuthenticationModule(ILog log, IWebContext webContext)
+		public FederationAuthenticationModule(ILog log, IRedirectInformationFactory redirectInformationFactory, IWebContext webContext)
 		{
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
+			this.RedirectInformationFactory = redirectInformationFactory ?? throw new ArgumentNullException(nameof(redirectInformationFactory));
 			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
 		}
 
@@ -33,98 +34,76 @@ namespace RegionOrebroLan.ReportingServices.Web
 		#region Properties
 
 		protected internal virtual ILog Log { get; }
-
-		protected internal virtual Type WebConfigUtilType
-		{
-			get
-			{
-				// ReSharper disable InvertIf
-				if(_webConfigUtilType == null)
-				{
-					// ReSharper disable PossibleNullReferenceException
-					var assemblyQualifiedName = typeof(TraceEvent).AssemblyQualifiedName.Replace(".TraceEvent", ".WebConfigUtil");
-					// ReSharper restore PossibleNullReferenceException
-
-					_webConfigUtilType = Type.GetType(assemblyQualifiedName, true);
-				}
-				// ReSharper restore InvertIf
-
-				return _webConfigUtilType;
-			}
-		}
-
+		protected internal virtual IRedirectInformationFactory RedirectInformationFactory { get; }
 		protected internal virtual IWebContext WebContext { get; }
 
 		#endregion
 
 		#region Methods
 
-		protected internal virtual void LogDebugIfEnabled(string method)
+		protected internal virtual void LogDebugIfEnabled(string message, string method)
 		{
 			if(!this.Log.IsDebugEnabled)
 				return;
 
-			var user = this.WebContext.HttpContext.User;
-			var userName = user == null ? "NULL" : (user.Identity.IsAuthenticated ? user.Identity.Name : "Anonymous");
-
-			this.Log.Debug(string.Format(CultureInfo.InvariantCulture, "FederationAuthenticationModule - {0}: user = \"{1}\", url = {2}", method, userName, this.WebContext.HttpRequest.Url));
+			this.Log.DebugFormat("FederationAuthenticationModule - {0}: {1}", method, message);
 		}
 
-		[SuppressMessage("Microsoft.Naming", "CA1725: Parameter names should match base declaration")]
+		[SuppressMessage("Microsoft.Naming", "CA1725: Parameter names should match base declaration.")]
 		protected override void OnAuthenticateRequest(object sender, EventArgs e)
 		{
-
-
-
-
-			// När vi kommer hit behöver vi manipulera AuthenticationType
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-			// ReSharper disable PossibleNullReferenceException
-			this.WebConfigUtilType.GetField("m_authMode", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, Microsoft.ReportingServices.Interfaces.AuthenticationType.Forms);
-			// ReSharper restore PossibleNullReferenceException
-
-			this.LogDebugIfEnabled("Entering OnAuthenticateRequest");
-
 			base.OnAuthenticateRequest(sender, e);
 
-			this.LogDebugIfEnabled("Exiting OnAuthenticateRequest");
+			this.LogDebugIfEnabled("HttpMethod = " + this.WebContext.HttpRequest.HttpMethod + ", Response-cookies = " + string.Join(", ", this.WebContext.HttpResponse.Cookies.AllKeys) + ", Url = " + this.WebContext.HttpRequest.Url, "OnAuthenticateRequest");
+
+			if(this.WebContext.HttpContext.User != null)
+			{
+				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Resolving redirect ({0}).", this.WebContext.HttpRequest.Url), "OnAuthenticateRequest");
+
+				var redirectInformation = this.RedirectInformationFactory.Create();
+
+				if(redirectInformation.Exception != null && this.Log.IsErrorEnabled)
+					this.Log.Error(redirectInformation.Exception);
+
+				if(!redirectInformation.Redirect)
+					return;
+
+				foreach(var name in this.WebContext.HttpRequest.Cookies.AllKeys)
+				{
+					if(this.WebContext.HttpResponse.Cookies.AllKeys.Contains(name, StringComparer.OrdinalIgnoreCase))
+						continue;
+
+					var cookie = this.WebContext.HttpRequest.Cookies[name];
+
+					// ReSharper disable AssignNullToNotNullAttribute
+					this.WebContext.HttpResponse.Cookies.Add(cookie);
+					// ReSharper restore AssignNullToNotNullAttribute
+				}
+
+				var url = redirectInformation.Url.ToStringValue();
+
+				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Redirecting to {0}, response-cookies = {1}.", url, string.Join(", ", this.WebContext.HttpResponse.Cookies.AllKeys)), "OnAuthenticateRequest");
+
+				this.WebContext.HttpResponse.Redirect(url, false);
+				this.WebContext.HttpContext.ApplicationInstance.CompleteRequest();
+			}
+			else
+			{
+				this.LogDebugIfEnabled("The http-context-user is null. Redirecting to identity-provider.", "OnAuthenticateRequest");
+
+				this.RedirectToIdentityProvider("passive", this.WebContext.HttpRequest.RawUrl, this.PersistentCookiesOnPassiveRedirects);
+			}
 		}
 
-		[SuppressMessage("Microsoft.Naming", "CA1725: Parameter names should match base declaration")]
-		protected override void OnEndRequest(object sender, EventArgs e)
+		protected override void OnRedirectingToIdentityProvider(RedirectingToIdentityProviderEventArgs e)
 		{
-			this.LogDebugIfEnabled("Entering OnEndRequest");
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Changing reply from \"{0}\" to \"{1}\".", e.SignInRequestMessage.Reply, this.WebContext.HttpRequest.Url), "OnRedirectingToIdentityProvider");
 
-			base.OnEndRequest(sender, e);
-
-			this.LogDebugIfEnabled("Exiting OnEndRequest");
-		}
-
-		protected override void OnPostAuthenticateRequest(object sender, EventArgs e)
-		{
 			// ReSharper disable PossibleNullReferenceException
-			this.WebConfigUtilType.GetField("m_authMode", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, Microsoft.ReportingServices.Interfaces.AuthenticationType.Windows);
+			e.SignInRequestMessage.Reply = this.WebContext.HttpRequest.Url.ToString();
 			// ReSharper restore PossibleNullReferenceException
 
-			this.LogDebugIfEnabled("Entering OnPostAuthenticateRequest");
-
-			base.OnPostAuthenticateRequest(sender, e);
-
-			this.LogDebugIfEnabled("Exiting OnPostAuthenticateRequest");
+			base.OnRedirectingToIdentityProvider(e);
 		}
 
 		#endregion

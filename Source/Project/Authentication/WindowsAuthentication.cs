@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Security.Principal;
 using log4net;
@@ -46,78 +47,77 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Methods
 
+		protected internal virtual string GetIdentityName(IIdentity identity)
+		{
+			if(identity == null)
+				return "NULL";
+
+			if(!identity.IsAuthenticated)
+				return "Anonymous";
+
+			return identity.Name;
+		}
+
 		public virtual void GetUserInfo(out IIdentity userIdentity, out IntPtr userId)
 		{
-			this.LogDebugIfEnabled("Entering GetUserInfo with 2 parameters.");
-
+			userId = IntPtr.Zero;
 			userIdentity = this.WebContext.HttpContext?.User?.Identity;
 
 			if(userIdentity == null || !userIdentity.IsAuthenticated)
 			{
-				var userIdentityValue = userIdentity == null ? "null." : "anonymous";
-				var message = string.Format(CultureInfo.InvariantCulture, "GetUserInfo with 2 parameters: The http-context-user-identity can not be {0}.", userIdentityValue);
+				var message = string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity can not be \"{0}\".", this.GetIdentityName(userIdentity));
 
 				if(this.WebContext.HttpContext == null)
 					message += " The http-context is null.";
 				else if(this.WebContext.HttpContext.User == null)
 					message += " The http-context-user is null.";
 
-				this.LogErrorIfEnabled(message);
+				const string method = "GetUserInfo (2 parameters)";
 
-				throw new InvalidOperationException(message);
+				this.LogErrorIfEnabled(message, method);
+
+				throw new InvalidOperationException("WindowsAuthentication - " + method + ": " + message);
 			}
 
 			if(!(userIdentity is WindowsIdentity windowsIdentity))
-			{
-				const string message = "GetUserInfo with 2 parameters: The http-context-user-identity must be a windows-identity.";
-
-				this.LogErrorIfEnabled(message);
-
-				throw new InvalidOperationException(message);
-			}
-
-			userId = windowsIdentity.Token;
-
-			this.LogDebugIfEnabled("Exiting GetUserInfo with 2 parameters.");
+				this.ThrowIdentityMustBeAWindowsIdentityException("GetUserInfo (2 parameters)", "http-context-user-identity");
+			else
+				userId = windowsIdentity.Token;
 		}
 
 		public virtual void GetUserInfo(IRSRequestContext requestContext, out IIdentity userIdentity, out IntPtr userId)
 		{
-			this.LogDebugIfEnabled("Entering GetUserInfo with 3 parameters.");
+			userId = IntPtr.Zero;
+			userIdentity = requestContext.User;
 
-			userIdentity = requestContext?.User ?? this.IdentityResolver.GetIdentity(requestContext?.Cookies);
+			var cookies = requestContext.Cookies ?? new Dictionary<string, string>();
 
-			if(userIdentity == null || !userIdentity.IsAuthenticated)
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "User-identity = {0}, cookies = {1}.", userIdentity == null ? "NULL" : (userIdentity.IsAuthenticated ? userIdentity.Name : "Anonymous"), string.Join(", ", cookies.Keys)), "GetUserInfo (3 parameters)");
+
+			if(userIdentity == null)
 			{
-				var userIdentityValue = userIdentity == null ? "null." : "anonymous";
-				var message = string.Format(CultureInfo.InvariantCulture, "GetUserInfo with 3 parameters: The user-identity could not be resolved. The user-identity can not be {0}.", userIdentityValue);
-
-				if(requestContext == null)
+				try
 				{
-					message += " The request-context is null.";
+					userIdentity = this.IdentityResolver.GetIdentity(cookies);
 				}
-				else if(requestContext.User == null && requestContext.Cookies == null)
+				catch(Exception exception)
 				{
-					message += " The request-context-cookies is null.";
+					const string message = "Could not get identity from cookies.";
+					const string method = "GetUserInfo (3 parameters)";
+
+					this.LogErrorIfEnabled(exception, message, method);
+
+					throw new InvalidOperationException("WindowsAuthentication - " + method + ": " + message, exception);
 				}
-
-				this.LogErrorIfEnabled(message);
-
-				throw new InvalidOperationException(message);
 			}
+
+			if(userIdentity == null)
+				return;
 
 			if(!(userIdentity is WindowsIdentity windowsIdentity))
-			{
-				const string message = "GetUserInfo with 3 parameters: The user-identity must be a windows-identity.";
-
-				this.LogErrorIfEnabled(message);
-
-				throw new InvalidOperationException(message);
-			}
-
-			userId = windowsIdentity.Token;
-
-			this.LogDebugIfEnabled("Exiting GetUserInfo with 3 parameters.");
+				this.ThrowIdentityMustBeAWindowsIdentityException("GetUserInfo (3 parameters)", "request-context-user");
+			else
+				userId = windowsIdentity.Token;
 		}
 
 		public virtual bool IsValidPrincipalName(string principalName)
@@ -125,44 +125,42 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			return this.WindowsAuthenticationInternal.IsValidPrincipalName(principalName);
 		}
 
-		protected internal virtual void LogDebugIfEnabled(string message)
+		protected internal virtual void LogDebugIfEnabled(string message, string method)
 		{
-			if(this.Log.IsDebugEnabled)
-				this.Log.Debug(message);
+			if(!this.Log.IsDebugEnabled)
+				return;
+
+			this.Log.DebugFormat("WindowsAuthentication - {0}: {1}", method, message);
 		}
 
-		protected internal virtual void LogErrorIfEnabled(string message)
+		protected internal virtual void LogErrorIfEnabled(string message, string method)
 		{
-			this.LogErrorIfEnabled(message, null);
+			this.LogErrorIfEnabled(null, message, method);
 		}
 
-		protected internal virtual void LogErrorIfEnabled(Exception exception)
+		protected internal virtual void LogErrorIfEnabled(Exception exception, string method)
 		{
-			this.LogErrorIfEnabled(null, exception);
+			this.LogErrorIfEnabled(exception, null, method);
 		}
 
-		protected internal virtual void LogErrorIfEnabled(string message, Exception exception)
+		protected internal virtual void LogErrorIfEnabled(Exception exception, string message, string method)
 		{
 			if(!this.Log.IsErrorEnabled)
 				return;
 
-			if(message != null)
-			{
-				if(exception != null)
-					this.Log.Error(message, exception);
-				else
-					this.Log.Error(message);
-			}
+			var prefix = string.Format(CultureInfo.InvariantCulture, "WindowsAuthentication - {0}: ", method);
+
+			message = prefix + message;
+
+			if(exception == null)
+				this.Log.Error(message);
 			else
-			{
-				this.Log.Error(exception);
-			}
+				this.Log.Error(message, exception);
 		}
 
 		public virtual bool LogonUser(string userName, string password, string authority)
 		{
-			if(this.Log.IsDebugEnabled)
-				this.Log.Debug("LogonUser");
+			this.LogErrorIfEnabled("The method is not implemented.", "LogonUser");
 
 			throw new NotImplementedException();
 		}
@@ -174,6 +172,8 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		public virtual void SetConfiguration(string configuration)
 		{
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Configuration = \"{0}\".", configuration), "SetConfiguration");
+
 			try
 			{
 				this.IdentityResolver = this.IdentityResolverFactory.Create(configuration);
@@ -182,7 +182,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			{
 				var message = string.Format(CultureInfo.InvariantCulture, "Could not create an identity-resolver from configuraton \"{0}\".", configuration);
 
-				this.LogErrorIfEnabled(message, exception);
+				this.LogErrorIfEnabled(exception, message, "SetConfiguration");
 
 				throw new InvalidOperationException(message, exception);
 			}
@@ -191,6 +191,15 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		public virtual string SidToPrincipalName(byte[] sid)
 		{
 			return this.WindowsAuthenticationInternal.SidToPrincipalName(sid);
+		}
+
+		protected internal virtual void ThrowIdentityMustBeAWindowsIdentityException(string method, string parameterName)
+		{
+			var message = string.Format(CultureInfo.InvariantCulture, "The {0} must be a windows-identity.", parameterName);
+
+			this.LogErrorIfEnabled(message, method);
+
+			throw new InvalidOperationException("WindowsAuthentication - " + method + ": " + message);
 		}
 
 		#endregion

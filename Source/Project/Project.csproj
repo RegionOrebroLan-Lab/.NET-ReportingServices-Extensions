@@ -9,15 +9,15 @@
 		<PackageReference Include="Microsoft.ReportingServices" Version="14.0.0" />
 	</ItemGroup>
 	<ItemGroup>
-		<CodeAnalysisDictionary Include="$(SolutionDir).Global\CodeAnalysis\Dictionary.xml">
-			<Link>CodeAnalysis\Dictionary.xml</Link>
-		</CodeAnalysisDictionary>
-	</ItemGroup>
-	<ItemGroup>
 		<Reference Include="System.Configuration" />
 		<Reference Include="System.IdentityModel" />
 		<Reference Include="System.IdentityModel.Services" />
 		<Reference Include="System.Web" />
+	</ItemGroup>
+	<ItemGroup>
+		<CodeAnalysisDictionary Include="$(SolutionDir).Global\CodeAnalysis\Dictionary.xml">
+			<Link>CodeAnalysis\Dictionary.xml</Link>
+		</CodeAnalysisDictionary>
 	</ItemGroup>
 	<Import Project="Build\Build.targets" />
 </Project>

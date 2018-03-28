@@ -6,6 +6,7 @@ using System.IdentityModel.Services.Configuration;
 using System.IdentityModel.Tokens;
 using System.IO;
 using System.Reflection;
+using System.Runtime.Serialization;
 using System.Xml;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
@@ -17,6 +18,16 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		[SuppressMessage("Microsoft.Security", "CA3075:InsecureDTDProcessing")]
 		public virtual IIdentityResolver Create(string configuration)
 		{
+			var xmlDocument = new XmlDocument();
+
+			xmlDocument.LoadXml("<root>" + configuration + "</root>");
+
+			// ReSharper disable PossibleNullReferenceException
+			var element = xmlDocument.DocumentElement.ChildNodes[0];
+			// ReSharper restore PossibleNullReferenceException
+
+			configuration = element is XmlCDataSection ? element.InnerText : element.OuterXml;
+
 			using(var stringReader = new StringReader(configuration))
 			{
 				using(var xmlReader = XmlReader.Create(stringReader))
@@ -34,44 +45,6 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 					typeof(IdentityConfiguration).GetMethod("LoadConfiguration", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(identityConfiguration, new object[] {identityConfigurationElement});
 					// ReSharper restore PossibleNullReferenceException
 
-					// We need to set <clear /> as the first element in the configuration in RSReportServer.config
-					/*
-						<Configuration>
-							...
-							<Extensions>
-								...
-								<Authentication>
-									<Extension Name="Windows" Type="RegionOrebroLan.ReportingServices.Authentication.WindowsAuthentication, RegionOrebroLan.ReportingServices">
-										<Configuration>
-											<system.identityModel>
-												<identityConfiguration>
-													<certificateValidation certificateValidationMode="PeerOrChainTrust" />
-													<securityTokenHandlers>
-														
-														<clear /><!-- Important -->
-														
-														<add type="RegionOrebroLan.IdentityModel.Tokens.SamlImpersonatableSecurityTokenHandler, RegionOrebroLan.IdentityModel, Version=0.0.0.0, Culture=neutral, PublicKeyToken=520b099ae7bbdead">
-															<samlSecurityTokenRequirement
-																issuerCertificateRevocationMode="Online"
-																issuerCertificateTrustedStoreLocation="LocalMachine"
-																issuerCertificateValidationMode="PeerOrChainTrust"
-																mapToWindows="true"
-															>
-																<nameClaimType value="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name" />
-																<roleClaimType value="schemas.microsoft.com/ws/2006/04/identity/claims/role" />
-															</samlSecurityTokenRequirement>
-														</add>
-													</securityTokenHandlers>
-												</identityConfiguration>
-											</system.identityModel>
-										</Configuration>
-									</Extension>
-								</Authentication>
-								...
-							</Extensions>
-							...
-						</Configuration>
-					 */
 					var configuredSecurityTokenHandlers = new List<SecurityTokenHandler>();
 
 					// Save configured handlers temporarily.
@@ -95,10 +68,8 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 						identityConfiguration.SecurityTokenHandlers.AddOrReplace(configuredSecurityTokenHandler);
 					}
 
-					var federationConfiguration = new FederationConfiguration(false)
-					{
-						IdentityConfiguration = identityConfiguration
-					};
+					var federationConfiguration = (FederationConfiguration) FormatterServices.GetUninitializedObject(typeof(FederationConfiguration));
+					federationConfiguration.IdentityConfiguration = identityConfiguration;
 
 					return new IdentityResolver {FederationConfiguration = federationConfiguration};
 				}
