@@ -1,21 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Web.Security;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RegionOrebroLan.ReportingServices.Authentication;
+using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 {
 	[TestClass]
 	public class IdentityResolverTest
 	{
+		#region Properties
+
+		protected internal virtual IFormsAuthentication FormsAuthentication { get; } = new FormsAuthenticationWrapper();
+
+		#endregion
+
 		#region Methods
 
 		protected internal virtual IdentityResolver CreateDeaultIdentityResolver()
 		{
-			const string configuration = "<system.identityModel><identityConfiguration><certificateValidation certificateValidationMode=\"PeerOrChainTrust\" /><securityTokenHandlers><clear /><add type=\"System.IdentityModel.Tokens.SamlSecurityTokenHandler, System.IdentityModel, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089\"><samlSecurityTokenRequirement issuerCertificateRevocationMode=\"Online\" issuerCertificateTrustedStoreLocation=\"LocalMachine\" issuerCertificateValidationMode=\"PeerOrChainTrust\" mapToWindows=\"true\" ><nameClaimType value=\"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name\" /><roleClaimType value=\"schemas.microsoft.com/ws/2006/04/identity/claims/role\" /></samlSecurityTokenRequirement></add></securityTokenHandlers></identityConfiguration></system.identityModel>";
-
-			return (IdentityResolver) new IdentityResolverFactory().Create(configuration);
+			return new IdentityResolver(this.FormsAuthentication);
 		}
 
 		[TestMethod]
@@ -24,7 +28,7 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 		{
 			var cookies = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
 			{
-				{FormsAuthentication.FormsCookieName, "Invalid-value"}
+				{this.FormsAuthentication.CookieName, "Invalid-value"}
 			};
 
 			var identityResolver = this.CreateDeaultIdentityResolver();

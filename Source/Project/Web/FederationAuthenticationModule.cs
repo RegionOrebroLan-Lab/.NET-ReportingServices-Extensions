@@ -6,10 +6,10 @@ using System.IdentityModel.Services;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;
-using System.Web.Configuration;
-using System.Web.Security;
 using log4net;
 using RegionOrebroLan.ReportingServices.Extensions;
+using RegionOrebroLan.ReportingServices.InversionOfControl;
+using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.Web
 {
@@ -17,19 +17,18 @@ namespace RegionOrebroLan.ReportingServices.Web
 	{
 		#region Fields
 
-		private static readonly FormsAuthenticationConfiguration _formsAuthenticationConfiguration = new FormsAuthenticationConfiguration();
 		private static readonly ILog _log = LogManager.GetLogger(typeof(FederationAuthenticationModule));
-		private static readonly IWebContext _webContext = new WebContext();
-		private static readonly IRedirectInformationFactory _redirectInformationFactory = new RedirectInformationFactory(_webContext);
 
 		#endregion
 
 		#region Constructors
 
-		public FederationAuthenticationModule() : this(_log, _redirectInformationFactory, _webContext) { }
+		public FederationAuthenticationModule() : this(ServiceLocator.Instance.GetService<IFormsAuthentication>(), ServiceLocator.Instance.GetService<IFormsAuthenticationTicketFactory>(), _log, ServiceLocator.Instance.GetService<IRedirectInformationFactory>(), ServiceLocator.Instance.GetService<IWebContext>()) { }
 
-		public FederationAuthenticationModule(ILog log, IRedirectInformationFactory redirectInformationFactory, IWebContext webContext)
+		public FederationAuthenticationModule(IFormsAuthentication formsAuthentication, IFormsAuthenticationTicketFactory formsAuthenticationTicketFactory, ILog log, IRedirectInformationFactory redirectInformationFactory, IWebContext webContext)
 		{
+			this.FormsAuthentication = formsAuthentication ?? throw new ArgumentNullException(nameof(formsAuthentication));
+			this.FormsAuthenticationTicketFactory = formsAuthenticationTicketFactory ?? throw new ArgumentNullException(nameof(formsAuthenticationTicketFactory));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
 			this.RedirectInformationFactory = redirectInformationFactory ?? throw new ArgumentNullException(nameof(redirectInformationFactory));
 			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
@@ -39,7 +38,8 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Properties
 
-		protected internal virtual FormsAuthenticationConfiguration FormsAuthenticationConfiguration => _formsAuthenticationConfiguration;
+		protected internal virtual IFormsAuthentication FormsAuthentication { get; }
+		protected internal virtual IFormsAuthenticationTicketFactory FormsAuthenticationTicketFactory { get; }
 		protected internal virtual ILog Log { get; }
 		protected internal virtual IRedirectInformationFactory RedirectInformationFactory { get; }
 		protected internal virtual IWebContext WebContext { get; }
@@ -48,7 +48,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Methods
 
-		protected internal virtual FormsAuthenticationTicket CreateFormsAuthenticationTicket()
+		protected internal virtual IFormsAuthenticationTicket CreateFormsAuthenticationTicket()
 		{
 			if(!(this.WebContext.HttpContext.User.Identity is WindowsIdentity windowsIdentity))
 				throw new InvalidOperationException("The http-context-user-identity must be a windows-identity.");
@@ -58,7 +58,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 			if(userPrincipalNameClaim == null)
 				throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity must have a \"{0}\"-claim.", ClaimTypes.Upn));
 
-			return new FormsAuthenticationTicket(userPrincipalNameClaim.Value, false, this.FormsAuthenticationConfiguration.Timeout.Minutes);
+			return this.FormsAuthenticationTicketFactory.Create(userPrincipalNameClaim.Value);
 		}
 
 		protected internal virtual void LogDebugIfEnabled(string message, string method)
@@ -90,7 +90,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 				var formsAuthenticationTicket = this.CreateFormsAuthenticationTicket();
 
-				this.WebContext.HttpResponse.Cookies.Add(new HttpCookie(FormsAuthentication.FormsCookieName, FormsAuthentication.Encrypt(formsAuthenticationTicket)));
+				this.WebContext.HttpResponse.Cookies.Add(new HttpCookie(this.FormsAuthentication.CookieName, this.FormsAuthentication.Encrypt(formsAuthenticationTicket)));
 
 				var url = redirectInformation.Url.ToStringValue();
 

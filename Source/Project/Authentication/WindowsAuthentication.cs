@@ -4,8 +4,8 @@ using System.Globalization;
 using System.Security.Principal;
 using log4net;
 using Microsoft.ReportingServices.Interfaces;
+using RegionOrebroLan.ReportingServices.InversionOfControl;
 using RegionOrebroLan.ReportingServices.Web;
-using ReportingServicesWindowsAuthentication = Microsoft.ReportingServices.Authentication.WindowsAuthentication;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
 {
@@ -13,20 +13,17 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 	{
 		#region Fields
 
-		private static readonly IIdentityResolverFactory _identityResolverFactory = new IdentityResolverFactory();
 		private static readonly ILog _log = LogManager.GetLogger(typeof(WindowsAuthentication));
-		private static readonly IWebContext _webContext = new WebContext();
-		private static readonly IWindowsAuthenticationExtension2 _windowsAuthenticationInternal = new ReportingServicesWindowsAuthentication();
 
 		#endregion
 
 		#region Constructors
 
-		public WindowsAuthentication() : this(_identityResolverFactory, _log, _webContext, _windowsAuthenticationInternal) { }
+		public WindowsAuthentication() : this(ServiceLocator.Instance.GetService<IIdentityResolver>(), _log, ServiceLocator.Instance.GetService<IWebContext>(), ServiceLocator.Instance.GetService<IWindowsAuthenticationExtension2>("Internal")) { }
 
-		public WindowsAuthentication(IIdentityResolverFactory identityResolverFactory, ILog log, IWebContext webContext, IWindowsAuthenticationExtension2 windowsAuthenticationInternal)
+		public WindowsAuthentication(IIdentityResolver identityResolver, ILog log, IWebContext webContext, IWindowsAuthenticationExtension2 windowsAuthenticationInternal)
 		{
-			this.IdentityResolverFactory = identityResolverFactory ?? throw new ArgumentNullException(nameof(identityResolverFactory));
+			this.IdentityResolver = identityResolver ?? throw new ArgumentNullException(nameof(identityResolver));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
 			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
 			this.WindowsAuthenticationInternal = windowsAuthenticationInternal ?? throw new ArgumentNullException(nameof(windowsAuthenticationInternal));
@@ -36,12 +33,11 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Properties
 
-		protected internal virtual IIdentityResolver IdentityResolver { get; set; }
-		protected internal virtual IIdentityResolverFactory IdentityResolverFactory { get; }
+		protected internal virtual IIdentityResolver IdentityResolver { get; }
 		public virtual string LocalizedName => null;
 		protected internal virtual ILog Log { get; }
 		protected internal virtual IWebContext WebContext { get; }
-		protected internal IWindowsAuthenticationExtension2 WindowsAuthenticationInternal { get; }
+		protected internal virtual IWindowsAuthenticationExtension2 WindowsAuthenticationInternal { get; }
 
 		#endregion
 
@@ -170,23 +166,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			return this.WindowsAuthenticationInternal.PrincipalNameToSid(name);
 		}
 
-		public virtual void SetConfiguration(string configuration)
-		{
-			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Configuration = \"{0}\".", configuration), "SetConfiguration");
-
-			try
-			{
-				this.IdentityResolver = this.IdentityResolverFactory.Create(configuration);
-			}
-			catch(Exception exception)
-			{
-				var message = string.Format(CultureInfo.InvariantCulture, "Could not create an identity-resolver from configuraton \"{0}\".", configuration);
-
-				this.LogErrorIfEnabled(exception, message, "SetConfiguration");
-
-				throw new InvalidOperationException(message, exception);
-			}
-		}
+		public virtual void SetConfiguration(string configuration) { }
 
 		public virtual string SidToPrincipalName(byte[] sid)
 		{

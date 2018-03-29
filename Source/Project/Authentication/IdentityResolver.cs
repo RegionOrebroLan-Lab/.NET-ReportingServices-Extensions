@@ -5,9 +5,9 @@ using System.IdentityModel.Services;
 using System.Security.Claims;
 using System.Security.Principal;
 using System.Web;
-using System.Web.Security;
 using log4net;
 using Microsoft.IdentityModel.WindowsTokenService;
+using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
 {
@@ -21,10 +21,11 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Constructors
 
-		public IdentityResolver() : this(_log) { }
+		public IdentityResolver(IFormsAuthentication formsAuthentication) : this(formsAuthentication, _log) { }
 
-		public IdentityResolver(ILog log)
+		protected internal IdentityResolver(IFormsAuthentication formsAuthentication, ILog log)
 		{
+			this.FormsAuthentication = formsAuthentication ?? throw new ArgumentNullException(nameof(formsAuthentication));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
 		}
 
@@ -32,6 +33,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Properties
 
+		protected internal virtual IFormsAuthentication FormsAuthentication { get; }
 		protected internal virtual ILog Log { get; }
 
 		#endregion
@@ -57,7 +59,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		{
 			cookies = cookies ?? new Dictionary<string, string>();
 
-			if(!cookies.TryGetValue(FormsAuthentication.FormsCookieName, out string cookieValue))
+			if(!cookies.TryGetValue(this.FormsAuthentication.CookieName, out var cookieValue))
 			{
 				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "There are no relevant cookies. Available cookies: {0}.", string.Join(", ", cookies.Keys)), "GetIdentity");
 
@@ -66,18 +68,18 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 			try
 			{
-				var ticket = FormsAuthentication.Decrypt(cookieValue);
+				var ticket = this.FormsAuthentication.Decrypt(cookieValue);
 
 				if(ticket == null)
 				{
-					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" is null.", FormsAuthentication.FormsCookieName), "GetIdentity");
+					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" is null.", this.FormsAuthentication.CookieName), "GetIdentity");
 
 					return null;
 				}
 
 				if(ticket.Expired)
 				{
-					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" has expired.", FormsAuthentication.FormsCookieName), "GetIdentity");
+					this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The ticket from cookie \"{0}\" has expired.", this.FormsAuthentication.CookieName), "GetIdentity");
 
 					return null;
 				}
