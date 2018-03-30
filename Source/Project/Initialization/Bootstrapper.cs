@@ -4,8 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using log4net;
 using log4net.Config;
+using RegionOrebroLan.ReportingServices.StructureMap;
 using RegionOrebroLan.ReportingServices.StructureMap.Configuration;
-using StructureMap;
 
 namespace RegionOrebroLan.ReportingServices.Initialization
 {
@@ -34,25 +34,18 @@ namespace RegionOrebroLan.ReportingServices.Initialization
 			if(this.Log.IsDebugEnabled)
 				this.Log.Debug("Bootstrap started.");
 
-			var container = new Container();
-
-			container.Configure(this.ConfigureContainer);
+			Global.Container.Configure(configuration =>
+			{
+				foreach(IRegistryElement registryElement in ((Section) ConfigurationManager.GetSection("structureMap")).Registries)
+				{
+					// ReSharper disable AssignNullToNotNullAttribute
+					configuration.AddRegistry((global::StructureMap.Configuration.DSL.Registry) Activator.CreateInstance(Type.GetType(registryElement.Type, true)));
+					// ReSharper restore AssignNullToNotNullAttribute
+				}
+			});
 
 			if(this.Log.IsDebugEnabled)
 				this.Log.Debug("Bootstrap finished.");
-		}
-
-		protected internal virtual void ConfigureContainer(ConfigurationExpression configurationExpression)
-		{
-			if(configurationExpression == null)
-				throw new ArgumentNullException(nameof(configurationExpression));
-
-			foreach(IRegistryElement registryElement in ((Section) ConfigurationManager.GetSection("structureMap")).Registries)
-			{
-				// ReSharper disable AssignNullToNotNullAttribute
-				configurationExpression.AddRegistry((global::StructureMap.Configuration.DSL.Registry) Activator.CreateInstance(Type.GetType(registryElement.Type, true)));
-				// ReSharper restore AssignNullToNotNullAttribute
-			}
 		}
 
 		public static void Start()
