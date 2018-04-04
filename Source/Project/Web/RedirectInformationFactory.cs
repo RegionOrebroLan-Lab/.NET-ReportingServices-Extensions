@@ -18,9 +18,9 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Constructors
 
-		public RedirectInformationFactory(IWebContext webContext)
+		public RedirectInformationFactory(IWebFacade webFacade)
 		{
-			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
+			this.WebFacade = webFacade ?? throw new ArgumentNullException(nameof(webFacade));
 		}
 
 		#endregion
@@ -47,7 +47,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 		[SuppressMessage("Microsoft.Design", "CA1056:UriPropertiesShouldNotBeStrings")]
 		protected internal virtual string ReturnUrlParameterName => _returnUrlParameterName;
 
-		protected internal virtual IWebContext WebContext { get; }
+		protected internal virtual IWebFacade WebFacade { get; }
 
 		#endregion
 
@@ -57,7 +57,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 		{
 			var redirectInformation = new RedirectInformation();
 
-			var returnUrlValue = this.WebContext.HttpRequest.QueryString[this.ReturnUrlParameterName];
+			var returnUrlValue = this.WebFacade.Request.QueryString[this.ReturnUrlParameterName];
 
 			// ReSharper disable InvertIf
 			if(!string.IsNullOrEmpty(returnUrlValue))
@@ -85,7 +85,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 		protected internal virtual UriBuilder CreateUriBuilder()
 		{
 			// ReSharper disable AssignNullToNotNullAttribute
-			return new UriBuilder(this.WebContext.HttpRequest.Url)
+			return new UriBuilder(this.WebFacade.Request.Url)
 			{
 				Fragment = string.Empty,
 				Path = string.Empty,
@@ -101,7 +101,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 			{
 				var returnUrlBuilder = new UriBuilder(this.CreateUriBuilder().Uri.ToString().TrimEnd('/') + "/" + returnUrl.OriginalString.TrimStart('/'));
 
-				var applicationPath = this.WebContext.HttpRequest.ApplicationPath.TrimEnd('/') + "/";
+				var applicationPath = this.WebFacade.Request.ApplicationPath.TrimEnd('/') + "/";
 
 				if(returnUrlBuilder.Path.StartsWith(applicationPath, StringComparison.OrdinalIgnoreCase))
 				{
@@ -137,7 +137,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 				return this.IsPathWithinAppRootFunction.Invoke(url.OriginalString);
 
 			// ReSharper disable PossibleNullReferenceException
-			if(!url.IsLoopback && !string.Equals(this.WebContext.HttpRequest.Url.Host, url.Host, StringComparison.OrdinalIgnoreCase))
+			if(!url.IsLoopback && !string.Equals(this.WebFacade.Request.Url.Host, url.Host, StringComparison.OrdinalIgnoreCase))
 				return false;
 			// ReSharper restore PossibleNullReferenceException
 

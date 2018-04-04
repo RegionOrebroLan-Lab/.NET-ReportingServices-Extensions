@@ -27,6 +27,7 @@
 	</ItemGroup>
 	<ItemGroup>
 	  <Reference Include="System.IdentityModel" />
+	  <Reference Include="System.IdentityModel.Services" />
 	  <Reference Include="System.Web" />
 	</ItemGroup>
 	<Import Project="Build\Build.targets" />

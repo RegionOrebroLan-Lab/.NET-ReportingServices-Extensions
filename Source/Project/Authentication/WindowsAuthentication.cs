@@ -19,13 +19,13 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Constructors
 
-		public WindowsAuthentication() : this(ServiceLocator.Instance.GetService<IIdentityResolver>(), _log, ServiceLocator.Instance.GetService<IWebContext>(), ServiceLocator.Instance.GetService<IWindowsAuthenticationExtension2>("Internal")) { }
+		public WindowsAuthentication() : this(ServiceLocator.Instance.GetService<IIdentityResolver>(), _log, ServiceLocator.Instance.GetService<IWebFacade>(), ServiceLocator.Instance.GetService<IWindowsAuthenticationExtension2>("Internal")) { }
 
-		public WindowsAuthentication(IIdentityResolver identityResolver, ILog log, IWebContext webContext, IWindowsAuthenticationExtension2 windowsAuthenticationInternal)
+		public WindowsAuthentication(IIdentityResolver identityResolver, ILog log, IWebFacade webFacade, IWindowsAuthenticationExtension2 windowsAuthenticationInternal)
 		{
 			this.IdentityResolver = identityResolver ?? throw new ArgumentNullException(nameof(identityResolver));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
-			this.WebContext = webContext ?? throw new ArgumentNullException(nameof(webContext));
+			this.WebFacade = webFacade ?? throw new ArgumentNullException(nameof(webFacade));
 			this.WindowsAuthenticationInternal = windowsAuthenticationInternal ?? throw new ArgumentNullException(nameof(windowsAuthenticationInternal));
 		}
 
@@ -36,7 +36,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		protected internal virtual IIdentityResolver IdentityResolver { get; }
 		public virtual string LocalizedName => null;
 		protected internal virtual ILog Log { get; }
-		protected internal virtual IWebContext WebContext { get; }
+		protected internal virtual IWebFacade WebFacade { get; }
 		protected internal virtual IWindowsAuthenticationExtension2 WindowsAuthenticationInternal { get; }
 
 		#endregion
@@ -57,15 +57,15 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 		public virtual void GetUserInfo(out IIdentity userIdentity, out IntPtr userId)
 		{
 			userId = IntPtr.Zero;
-			userIdentity = this.WebContext.HttpContext?.User?.Identity;
+			userIdentity = this.WebFacade.User?.Identity;
 
 			if(userIdentity == null || !userIdentity.IsAuthenticated)
 			{
 				var message = string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity can not be \"{0}\".", this.GetIdentityName(userIdentity));
 
-				if(this.WebContext.HttpContext == null)
+				if(this.WebFacade.Context == null)
 					message += " The http-context is null.";
-				else if(this.WebContext.HttpContext.User == null)
+				else if(this.WebFacade.User == null)
 					message += " The http-context-user is null.";
 
 				const string method = "GetUserInfo (2 parameters)";

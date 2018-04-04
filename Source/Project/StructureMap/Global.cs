@@ -7,7 +7,6 @@ using RegionOrebroLan.ReportingServices.Web.Configuration;
 using RegionOrebroLan.ReportingServices.Web.Security;
 using StructureMap;
 using ReportingServicesWindowsAuthentication = Microsoft.ReportingServices.Authentication.WindowsAuthentication;
-using WebContext = RegionOrebroLan.ReportingServices.Web.WebContext;
 
 namespace RegionOrebroLan.ReportingServices.StructureMap
 {
@@ -36,14 +35,14 @@ namespace RegionOrebroLan.ReportingServices.StructureMap
 						{
 							_container = new Container(configuration =>
 							{
+								configuration.For<FormsAuthenticationConfiguration>().Singleton().Use<FormsAuthenticationConfiguration>();
 								configuration.For<IFormsAuthentication>().Singleton().Use<FormsAuthenticationWrapper>();
 								configuration.For<IFormsAuthenticationConfiguration>().Singleton().Use<FormsAuthenticationConfigurationWrapper>();
 								configuration.For<IFormsAuthenticationTicketFactory>().Singleton().Use<FormsAuthenticationTicketFactory>();
 								configuration.For<IIdentityResolver>().Singleton().Use<IdentityResolver>();
 								configuration.For<IRedirectInformationFactory>().Singleton().Use<RedirectInformationFactory>();
-								configuration.For<IWebContext>().Singleton().Use<WebContext>();
+								configuration.For<IWebFacade>().Singleton().Use<WebFacade>();
 								configuration.For<IWindowsAuthenticationExtension2>().Use<ReportingServicesWindowsAuthentication>().Name = "Internal";
-								configuration.For<FormsAuthenticationConfiguration>().Singleton().Use<FormsAuthenticationConfiguration>();
 							});
 						}
 					}

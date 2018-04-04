@@ -14,15 +14,15 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 			var windowsAuthentication = new WindowsAuthentication();
 
 			var firstWindowsAuthenticationInternal = windowsAuthentication.WindowsAuthenticationInternal;
-			var firstWebContext = windowsAuthentication.WebContext;
+			var firstWebFacade = windowsAuthentication.WebFacade;
 
 			windowsAuthentication = new WindowsAuthentication();
 
 			var secondWindowsAuthenticationInternal = windowsAuthentication.WindowsAuthenticationInternal;
-			var secondWebContext = windowsAuthentication.WebContext;
+			var secondWebFacade = windowsAuthentication.WebFacade;
 
 			Assert.IsFalse(ReferenceEquals(firstWindowsAuthenticationInternal, secondWindowsAuthenticationInternal));
-			Assert.IsTrue(ReferenceEquals(firstWebContext, secondWebContext));
+			Assert.IsTrue(ReferenceEquals(firstWebFacade, secondWebFacade));
 		}
 
 		#endregion

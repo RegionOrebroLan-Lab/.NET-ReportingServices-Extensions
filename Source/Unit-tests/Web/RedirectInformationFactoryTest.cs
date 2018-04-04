@@ -25,10 +25,10 @@ namespace RegionOrebroLan.ReportingServices.UnitTests.Web
 			httpRequestMock.Setup(httpRequest => httpRequest.QueryString).Returns(queryString);
 			httpRequestMock.Setup(httpRequest => httpRequest.Url).Returns(url);
 
-			var webContextMock = new Mock<IWebContext>();
-			webContextMock.Setup(webContext => webContext.HttpRequest).Returns(httpRequestMock.Object);
+			var webFacadeMock = new Mock<IWebFacade>();
+			webFacadeMock.Setup(webFacade => webFacade.Request).Returns(httpRequestMock.Object);
 
-			return new RedirectInformationFactory(webContextMock.Object);
+			return new RedirectInformationFactory(webFacadeMock.Object);
 		}
 
 		[TestMethod]
