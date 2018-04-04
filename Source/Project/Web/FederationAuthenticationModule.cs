@@ -129,10 +129,12 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		protected override void OnRedirectingToIdentityProvider(RedirectingToIdentityProviderEventArgs e)
 		{
-			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Changing reply from \"{0}\" to \"{1}\".", e.SignInRequestMessage.Reply, this.WebFacade.Request.Url), "OnRedirectingToIdentityProvider");
+			var replyUrl = this.GetReplyUrl();
+
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Changing reply from \"{0}\" to \"{1}\".", e.SignInRequestMessage.Reply, replyUrl), "OnRedirectingToIdentityProvider");
 
 			// ReSharper disable PossibleNullReferenceException
-			e.SignInRequestMessage.Reply = this.GetReplyUrl().ToString();
+			e.SignInRequestMessage.Reply = replyUrl.ToString();
 			// ReSharper restore PossibleNullReferenceException
 
 			base.OnRedirectingToIdentityProvider(e);
