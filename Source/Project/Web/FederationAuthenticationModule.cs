@@ -62,23 +62,24 @@ namespace RegionOrebroLan.ReportingServices.Web
 			return this.FormsAuthenticationTicketFactory.Create(userPrincipalNameClaim.Value);
 		}
 
-		protected internal virtual Uri GetReplyUrl()
+		protected internal virtual IRedirectInformation GetRedirectInformationRegardingSlash()
 		{
+			var redirectInformation = new RedirectInformation();
+
 			var url = this.WebFacade.Request.Url;
 
-			// ReSharper disable PossibleNullReferenceException
-			if(url.LocalPath.EndsWith("/", StringComparison.OrdinalIgnoreCase))
-				return url;
-			// ReSharper restore PossibleNullReferenceException
+			// ReSharper disable InvertIf
+			if(url != null && !url.LocalPath.EndsWith("/", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(Path.GetExtension(url.LocalPath)))
+			{
+				var uriBuilder = new UriBuilder(url);
 
-			if(!string.IsNullOrEmpty(Path.GetExtension(url.LocalPath)))
-				return url;
+				uriBuilder.Path += "/";
 
-			var uriBuilder = new UriBuilder(url);
+				redirectInformation.Url = uriBuilder.Uri;
+			}
+			// ReSharper restore InvertIf
 
-			uriBuilder.Path += "/";
-
-			return uriBuilder.Uri;
+			return redirectInformation;
 		}
 
 		protected internal virtual void LogDebugIfEnabled(string message, string method)
@@ -92,6 +93,18 @@ namespace RegionOrebroLan.ReportingServices.Web
 		[SuppressMessage("Microsoft.Naming", "CA1725: Parameter names should match base declaration.")]
 		protected override void OnAuthenticateRequest(object sender, EventArgs e)
 		{
+			var redirectInformation = this.GetRedirectInformationRegardingSlash();
+
+			if(redirectInformation.Redirect)
+			{
+				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The path must end with a slash. Redirecting from {0} to {1}.", this.WebFacade.Request.Url, redirectInformation.Url), "OnAuthenticateRequest");
+
+				this.WebFacade.Response.Redirect(redirectInformation.Url.ToStringValue(), false);
+				this.WebFacade.Context.ApplicationInstance.CompleteRequest();
+
+				return;
+			}
+
 			base.OnAuthenticateRequest(sender, e);
 
 			this.LogDebugIfEnabled("HttpMethod = " + this.WebFacade.Request.HttpMethod + ", Response-cookies = " + string.Join(", ", this.WebFacade.Response.Cookies.AllKeys) + ", Url = " + this.WebFacade.Request.Url, "OnAuthenticateRequest");
@@ -100,7 +113,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 			{
 				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Resolving redirect ({0}).", this.WebFacade.Request.Url), "OnAuthenticateRequest");
 
-				var redirectInformation = this.RedirectInformationFactory.Create();
+				redirectInformation = this.RedirectInformationFactory.Create();
 
 				if(redirectInformation.Exception != null && this.Log.IsErrorEnabled)
 					this.Log.Error(redirectInformation.Exception);
@@ -129,12 +142,10 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		protected override void OnRedirectingToIdentityProvider(RedirectingToIdentityProviderEventArgs e)
 		{
-			var replyUrl = this.GetReplyUrl();
-
-			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Changing reply from \"{0}\" to \"{1}\".", e.SignInRequestMessage.Reply, replyUrl), "OnRedirectingToIdentityProvider");
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Changing reply from \"{0}\" to \"{1}\".", e.SignInRequestMessage.Reply, this.WebFacade.Request.Url), "OnRedirectingToIdentityProvider");
 
 			// ReSharper disable PossibleNullReferenceException
-			e.SignInRequestMessage.Reply = replyUrl.ToString();
+			e.SignInRequestMessage.Reply = this.WebFacade.Request.Url.ToString();
 			// ReSharper restore PossibleNullReferenceException
 
 			base.OnRedirectingToIdentityProvider(e);

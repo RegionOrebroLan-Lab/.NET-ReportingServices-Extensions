@@ -37,34 +37,43 @@ namespace RegionOrebroLan.ReportingServices.UnitTests.Web
 		}
 
 		[TestMethod]
-		public void GetReplyUrl_IfTheLocalPathOfTheHttpRequestEndsWithASlash_ShouldReturnTheUrlOfTheHttpRequestUnmodified()
+		public void GetRedirectInformationRegardingSlash_IfTheLocalPathOfTheHttpRequestEndsWithASlash_ShouldReturnRedirectInformationWithRedirectSetToFalseAndUrlSetToNull()
 		{
 			var url = new Uri("https://server.local.net/ReportServer/?&rs%3ACommand=ListChildren");
 
 			var federationAuthenticationModule = this.CreateFederationAuthenticationModule(url);
 
-			Assert.AreEqual(url, federationAuthenticationModule.GetReplyUrl());
+			var redirectInformation = federationAuthenticationModule.GetRedirectInformationRegardingSlash();
+
+			Assert.IsFalse(redirectInformation.Redirect);
+			Assert.IsNull(redirectInformation.Url);
 		}
 
 		[TestMethod]
-		public void GetReplyUrl_IfTheLocalPathOfTheHttpRequestHasAFileExtension_ShouldReturnTheUrlOfTheHttpRequestUnmodified()
+		public void GetRedirectInformationRegardingSlash_IfTheLocalPathOfTheHttpRequestHasAFileExtension_ShouldReturnRedirectInformationWithRedirectSetToFalseAndUrlSetToNull()
 		{
 			var url = new Uri("https://server.local.net/ReportServer.test?&rs%3ACommand=ListChildren");
 
 			var federationAuthenticationModule = this.CreateFederationAuthenticationModule(url);
 
-			Assert.AreEqual(url, federationAuthenticationModule.GetReplyUrl());
+			var redirectInformation = federationAuthenticationModule.GetRedirectInformationRegardingSlash();
+
+			Assert.IsFalse(redirectInformation.Redirect);
+			Assert.IsNull(redirectInformation.Url);
 		}
 
 		[TestMethod]
-		public void GetReplyUrl_IfTheLocalPathOfTheHttpRequestHasNoFileExtensionAndDoesNotEndWithASlash_ShouldReturnTheUrlOfTheHttpRequestWithTheLocalPathModifiedEndingWithASlash()
+		public void GetRedirectInformationRegardingSlash_IfTheLocalPathOfTheHttpRequestHasNoFileExtensionAndDoesNotEndWithASlash_ShouldReturnRedirectInformationWithRedirectSetToTrueAndUrlSetToAnUrlWithTheLocalPathEndingWithASlash()
 		{
 			var url = new Uri("https://server.local.net/ReportServer?&rs%3ACommand=ListChildren");
 			var expectedUrl = new Uri("https://server.local.net/ReportServer/?&rs%3ACommand=ListChildren");
 
 			var federationAuthenticationModule = this.CreateFederationAuthenticationModule(url);
 
-			Assert.AreEqual(expectedUrl, federationAuthenticationModule.GetReplyUrl());
+			var redirectInformation = federationAuthenticationModule.GetRedirectInformationRegardingSlash();
+
+			Assert.IsTrue(redirectInformation.Redirect);
+			Assert.AreEqual(expectedUrl, redirectInformation.Url);
 		}
 
 		#endregion
