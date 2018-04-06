@@ -1,8 +1,8 @@
 <Project>
 	<PropertyGroup Label="Initial">
 		<Company>Region Örebro län</Company>
-		<VersionPrefix>0.0.0</VersionPrefix>
-		<VersionPrereleaseName>alpha</VersionPrereleaseName>
+		<VersionPrefix>1.0.0</VersionPrefix>
+		<VersionPrereleaseName></VersionPrereleaseName>
 	</PropertyGroup>
 	<PropertyGroup Label="Assembly">
 		<AssemblyName>RegionOrebroLan.ReportingServices</AssemblyName>
@@ -10,7 +10,7 @@
 		<AssemblyVersion>$(VersionPrefix).0</AssemblyVersion>
 		<CodeAnalysisRuleSet>CodeAnalysis\Rules.ruleset</CodeAnalysisRuleSet>
 		<DelaySign>false</DelaySign>
-		<Description>Extensions/additions for System.IdentityModel.</Description>
+		<Description>Extensions/additions for SQL Server Reporting Services.</Description>
 		<FileVersion>$(VersionPrefix).0</FileVersion>
 		<RootNamespace>$(AssemblyName)</RootNamespace>
 		<SignAssembly>true</SignAssembly>
