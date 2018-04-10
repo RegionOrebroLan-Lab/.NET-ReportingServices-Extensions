@@ -4,9 +4,8 @@ using System.Globalization;
 using System.IdentityModel.Services;
 using System.Security.Claims;
 using System.Security.Principal;
-using System.Web;
 using log4net;
-using Microsoft.IdentityModel.WindowsTokenService;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
@@ -40,21 +39,6 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Methods
 
-		protected internal virtual HttpContext CreateHttpContext()
-		{
-			return new HttpContext(this.CreateHttpRequest(), this.CreateHttpResponse());
-		}
-
-		protected internal virtual HttpRequest CreateHttpRequest()
-		{
-			return new HttpRequest(null, "http://localhost/", null);
-		}
-
-		protected internal virtual HttpResponse CreateHttpResponse()
-		{
-			return new HttpResponse(null);
-		}
-
 		public virtual IIdentity GetIdentity(IDictionary<string, string> cookies)
 		{
 			cookies = cookies ?? new Dictionary<string, string>();
@@ -84,13 +68,13 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 					return null;
 				}
 
-				var windowsIdentity = S4UClient.UpnLogon(ticket.Name);
+				var windowsIdentity = new WindowsIdentity(ticket.Name);
 
-				windowsIdentity = new WindowsIdentity(windowsIdentity.Token, "Federation", WindowsAccountType.Normal, true);
-
-				windowsIdentity.AddClaim(new Claim(ClaimTypes.Upn, ticket.Name));
-
-				return windowsIdentity;
+				return new WindowsFederationIdentity(new[]
+				{
+					new Claim(ClaimTypes.Name, windowsIdentity.Name),
+					new Claim(ClaimTypes.Upn, ticket.Name)
+				});
 			}
 			catch(Exception exception)
 			{

@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.IdentityModel.Claims;
 using System.IdentityModel.Services;
 using System.IO;
 using System.Linq;
+using System.Security.Claims;
 using System.Security.Principal;
 using System.Web;
 using log4net;
 using RegionOrebroLan.ReportingServices.Extensions;
 using RegionOrebroLan.ReportingServices.InversionOfControl;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.Web
@@ -41,6 +42,21 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		protected internal virtual IFormsAuthentication FormsAuthentication { get; }
 		protected internal virtual IFormsAuthenticationTicketFactory FormsAuthenticationTicketFactory { get; }
+
+		protected internal virtual bool IsInternalServiceRequest
+		{
+			get
+			{
+				var request = this.WebFacade.Request;
+
+				// ReSharper disable PossibleNullReferenceException
+				var isServiceRequest = string.Equals(".asmx", Path.GetExtension(request.Url.LocalPath), StringComparison.OrdinalIgnoreCase);
+				// ReSharper restore PossibleNullReferenceException
+
+				return isServiceRequest && request.Headers.AllKeys.Contains("RSViaWebApp") && request.Headers.AllKeys.Contains("SOAPAction");
+			}
+		}
+
 		protected internal virtual ILog Log { get; }
 		protected internal virtual IRedirectInformationFactory RedirectInformationFactory { get; }
 		protected internal virtual IWebFacade WebFacade { get; }
@@ -49,37 +65,55 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Methods
 
-		protected internal virtual IFormsAuthenticationTicket CreateFormsAuthenticationTicket()
+		protected internal virtual void AuthenticateWithFormsCookie()
 		{
-			if(!(this.WebFacade.User.Identity is WindowsIdentity windowsIdentity))
-				throw new InvalidOperationException("The http-context-user-identity must be a windows-identity.");
+			if(!this.WebFacade.Request.Cookies.AllKeys.Contains(this.FormsAuthentication.CookieName))
+			{
+				var message = string.Format(CultureInfo.InvariantCulture, "The cookie \"{0}\" is not present.", this.FormsAuthentication.CookieName);
 
-			var userPrincipalNameClaim = windowsIdentity.Claims.FirstOrDefault(claim => claim.Type.Equals(ClaimTypes.Upn, StringComparison.OrdinalIgnoreCase));
+				this.LogDebugIfEnabled(message, "OnAuthenticateRequest");
 
-			if(userPrincipalNameClaim == null)
-				throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity must have a \"{0}\"-claim.", ClaimTypes.Upn));
+				var exception = new InvalidOperationException(message);
 
-			return this.FormsAuthenticationTicketFactory.Create(userPrincipalNameClaim.Value);
+				if(this.Log.IsErrorEnabled)
+					this.Log.Error(exception);
+
+				throw exception;
+			}
+
+			var cookie = this.WebFacade.Request.Cookies[this.FormsAuthentication.CookieName];
+
+			// ReSharper disable PossibleNullReferenceException
+			var ticket = this.FormsAuthentication.Decrypt(cookie.Value);
+			// ReSharper restore PossibleNullReferenceException
+
+			if(ticket.Expired)
+			{
+				this.LogDebugIfEnabled("The ticket has expired.", "AuthenticateWithFormsCookie");
+
+				return;
+			}
+
+			var windowsIdentity = new WindowsIdentity(ticket.Name);
+
+			this.WebFacade.Context.User = new WindowsFederationPrincipal(new WindowsFederationIdentity(new[]
+			{
+				new Claim(ClaimTypes.Name, windowsIdentity.Name),
+				new Claim(ClaimTypes.Upn, ticket.Name)
+			}));
 		}
 
-		protected internal virtual IRedirectInformation GetRedirectInformationRegardingSlash()
+		protected internal virtual IFormsAuthenticationTicket CreateFormsAuthenticationTicket()
 		{
-			var redirectInformation = new RedirectInformation();
+			if(!(this.WebFacade.User.Identity is IWindowsFederationIdentity windowsFederationIdentity))
+				throw new InvalidOperationException("The http-context-user-identity must be a windows-federation-identity.");
 
-			var url = this.WebFacade.Request.Url;
+			var userPrincipalName = windowsFederationIdentity.UserPrincipalName;
 
-			// ReSharper disable InvertIf
-			if(url != null && !url.LocalPath.EndsWith("/", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(Path.GetExtension(url.LocalPath)))
-			{
-				var uriBuilder = new UriBuilder(url);
+			if(string.IsNullOrEmpty(userPrincipalName))
+				throw new InvalidOperationException(string.Format(CultureInfo.InvariantCulture, "The http-context-user-identity must have a \"{0}\"-claim.", ClaimTypes.Upn));
 
-				uriBuilder.Path += "/";
-
-				redirectInformation.Url = uriBuilder.Uri;
-			}
-			// ReSharper restore InvertIf
-
-			return redirectInformation;
+			return this.FormsAuthenticationTicketFactory.Create(userPrincipalName);
 		}
 
 		protected internal virtual void LogDebugIfEnabled(string message, string method)
@@ -93,47 +127,28 @@ namespace RegionOrebroLan.ReportingServices.Web
 		[SuppressMessage("Microsoft.Naming", "CA1725: Parameter names should match base declaration.")]
 		protected override void OnAuthenticateRequest(object sender, EventArgs e)
 		{
-			var redirectInformation = this.GetRedirectInformationRegardingSlash();
-
-			if(redirectInformation.Redirect)
-			{
-				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The path must end with a slash. Redirecting from {0} to {1}.", this.WebFacade.Request.Url, redirectInformation.Url), "OnAuthenticateRequest");
-
-				this.WebFacade.Response.Redirect(redirectInformation.Url.ToStringValue(), false);
-				this.WebFacade.Context.ApplicationInstance.CompleteRequest();
-
+			if(this.RedirectIfTrailingSlashIsMissing())
 				return;
-			}
 
 			base.OnAuthenticateRequest(sender, e);
 
-			this.LogDebugIfEnabled("HttpMethod = " + this.WebFacade.Request.HttpMethod + ", Response-cookies = " + string.Join(", ", this.WebFacade.Response.Cookies.AllKeys) + ", Url = " + this.WebFacade.Request.Url, "OnAuthenticateRequest");
+			//this.LogDebugIfEnabled("HttpMethod = " + this.WebFacade.Request.HttpMethod + ", Request-cookies = " + string.Join(", ", this.WebFacade.Request.Cookies.AllKeys) + ", Response-cookies = " + string.Join(", ", this.WebFacade.Response.Cookies.AllKeys) + ", Url = " + this.WebFacade.Request.Url, "OnAuthenticateRequest");
 
 			if(this.WebFacade.User != null)
 			{
-				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Resolving redirect ({0}).", this.WebFacade.Request.Url), "OnAuthenticateRequest");
-
-				redirectInformation = this.RedirectInformationFactory.Create();
-
-				if(redirectInformation.Exception != null && this.Log.IsErrorEnabled)
-					this.Log.Error(redirectInformation.Exception);
-
-				if(!redirectInformation.Redirect)
-					return;
-
-				var formsAuthenticationTicket = this.CreateFormsAuthenticationTicket();
-
-				this.WebFacade.Response.Cookies.Add(new HttpCookie(this.FormsAuthentication.CookieName, this.FormsAuthentication.Encrypt(formsAuthenticationTicket)));
-
-				var url = redirectInformation.Url.ToStringValue();
-
-				this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Redirecting to {0}, response-cookies = {1}.", url, string.Join(", ", this.WebFacade.Response.Cookies.AllKeys)), "OnAuthenticateRequest");
-
-				this.WebFacade.Response.Redirect(url, false);
-				this.WebFacade.Context.ApplicationInstance.CompleteRequest();
+				this.RedirectUserIfNecessary();
 			}
 			else
 			{
+				if(this.IsInternalServiceRequest)
+				{
+					this.LogDebugIfEnabled("The http-context-user is null and the request is an internal service-request. Authenticating with forms-cookie.", "OnAuthenticateRequest");
+
+					this.AuthenticateWithFormsCookie();
+
+					return;
+				}
+
 				this.LogDebugIfEnabled("The http-context-user is null. Redirecting to identity-provider.", "OnAuthenticateRequest");
 
 				this.RedirectToIdentityProvider("passive", this.WebFacade.Request.RawUrl, this.PersistentCookiesOnPassiveRedirects);
@@ -149,6 +164,72 @@ namespace RegionOrebroLan.ReportingServices.Web
 			// ReSharper restore PossibleNullReferenceException
 
 			base.OnRedirectingToIdentityProvider(e);
+		}
+
+		protected internal virtual bool RedirectIfTrailingSlashIsMissing()
+		{
+			var redirectInformation = new RedirectInformation();
+
+			var url = this.WebFacade.Request.Url;
+
+			if(url != null && !url.LocalPath.EndsWith("/", StringComparison.OrdinalIgnoreCase) && string.IsNullOrEmpty(Path.GetExtension(url.LocalPath)))
+			{
+				var uriBuilder = new UriBuilder(url);
+
+				uriBuilder.Path += "/";
+
+				redirectInformation.Url = uriBuilder.Uri;
+			}
+
+			if(!redirectInformation.Redirect)
+				return false;
+
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "The path must end with a slash. Redirecting from {0} to {1}.", this.WebFacade.Request.Url, redirectInformation.Url), "RedirectIfTrailingSlashMissing");
+
+			this.WebFacade.Response.Redirect(redirectInformation.Url.ToStringValue(), false);
+			this.WebFacade.Context.ApplicationInstance.CompleteRequest();
+
+			return true;
+		}
+
+		protected internal virtual void RedirectUserIfNecessary()
+		{
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Resolving redirect ({0}).", this.WebFacade.Request.Url), "RedirectUserIfNecessary");
+
+			var redirectInformation = this.RedirectInformationFactory.Create();
+
+			if(redirectInformation.Exception != null && this.Log.IsErrorEnabled)
+				this.Log.Error(redirectInformation.Exception);
+
+			if(!redirectInformation.Redirect)
+				return;
+
+			var formsAuthenticationTicket = this.CreateFormsAuthenticationTicket();
+
+			this.WebFacade.Response.Cookies.Add(new HttpCookie(this.FormsAuthentication.CookieName, this.FormsAuthentication.Encrypt(formsAuthenticationTicket)));
+
+			foreach(var key in this.WebFacade.Request.Cookies.AllKeys)
+			{
+				if(key == null)
+					continue;
+
+				if(!key.StartsWith(this.FederationConfiguration.CookieHandler.Name, StringComparison.OrdinalIgnoreCase))
+					continue;
+
+				if(this.WebFacade.Response.Cookies.AllKeys.Contains(key))
+					continue;
+
+				// ReSharper disable AssignNullToNotNullAttribute
+				this.WebFacade.Response.Cookies.Add(this.WebFacade.Request.Cookies[key]);
+				// ReSharper restore AssignNullToNotNullAttribute
+			}
+
+			var url = redirectInformation.Url.ToStringValue();
+
+			this.LogDebugIfEnabled(string.Format(CultureInfo.InvariantCulture, "Redirecting to {0}, response-cookies = {1}.", url, string.Join(", ", this.WebFacade.Response.Cookies.AllKeys)), "RedirectUserIfNecessary");
+
+			this.WebFacade.Response.Redirect(url, false);
+			this.WebFacade.Context.ApplicationInstance.CompleteRequest();
 		}
 
 		#endregion

@@ -5,6 +5,7 @@ using System.Security.Principal;
 using log4net;
 using Microsoft.ReportingServices.Interfaces;
 using RegionOrebroLan.ReportingServices.InversionOfControl;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web;
 
 namespace RegionOrebroLan.ReportingServices.Authentication
@@ -75,10 +76,8 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 				throw new InvalidOperationException("WindowsAuthentication - " + method + ": " + message);
 			}
 
-			if(!(userIdentity is WindowsIdentity windowsIdentity))
-				this.ThrowIdentityMustBeAWindowsIdentityException("GetUserInfo (2 parameters)", "http-context-user-identity");
-			else
-				userId = windowsIdentity.Token;
+			if(!(userIdentity is IWindowsFederationIdentity))
+				this.ThrowIdentityMustBeAWindowsFederationIdentityException("GetUserInfo (2 parameters)", "http-context-user-identity");
 		}
 
 		public virtual void GetUserInfo(IRSRequestContext requestContext, out IIdentity userIdentity, out IntPtr userId)
@@ -110,10 +109,8 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			if(userIdentity == null)
 				return;
 
-			if(!(userIdentity is WindowsIdentity windowsIdentity))
-				this.ThrowIdentityMustBeAWindowsIdentityException("GetUserInfo (3 parameters)", "request-context-user");
-			else
-				userId = windowsIdentity.Token;
+			if(!(userIdentity is IWindowsFederationIdentity))
+				this.ThrowIdentityMustBeAWindowsFederationIdentityException("GetUserInfo (3 parameters)", "request-context-user");
 		}
 
 		public virtual bool IsValidPrincipalName(string principalName)
@@ -173,9 +170,9 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			return this.WindowsAuthenticationInternal.SidToPrincipalName(sid);
 		}
 
-		protected internal virtual void ThrowIdentityMustBeAWindowsIdentityException(string method, string parameterName)
+		protected internal virtual void ThrowIdentityMustBeAWindowsFederationIdentityException(string method, string parameterName)
 		{
-			var message = string.Format(CultureInfo.InvariantCulture, "The {0} must be a windows-identity.", parameterName);
+			var message = string.Format(CultureInfo.InvariantCulture, "The {0} must be a windows-federation-identity.", parameterName);
 
 			this.LogErrorIfEnabled(message, method);
 
