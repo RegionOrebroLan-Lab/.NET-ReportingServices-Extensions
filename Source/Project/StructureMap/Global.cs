@@ -2,6 +2,7 @@
 using System.Web.Configuration;
 using Microsoft.ReportingServices.Interfaces;
 using RegionOrebroLan.ReportingServices.Authentication;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web;
 using RegionOrebroLan.ReportingServices.Web.Configuration;
 using RegionOrebroLan.ReportingServices.Web.Security;
@@ -43,6 +44,7 @@ namespace RegionOrebroLan.ReportingServices.StructureMap
 								configuration.For<IRedirectInformationFactory>().Singleton().Use<RedirectInformationFactory>();
 								configuration.For<IWebFacade>().Singleton().Use<WebFacade>();
 								configuration.For<IWindowsAuthenticationExtension2>().Use<ReportingServicesWindowsAuthentication>().Name = "Internal";
+								configuration.For<IWindowsFederationIdentityFactory>().Singleton().Use<WindowsFederationIdentityFactory>();
 							});
 						}
 					}

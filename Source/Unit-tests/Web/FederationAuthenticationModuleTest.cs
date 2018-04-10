@@ -3,6 +3,7 @@ using System.Web;
 using log4net;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web;
 using RegionOrebroLan.ReportingServices.Web.Security;
 
@@ -15,7 +16,7 @@ namespace RegionOrebroLan.ReportingServices.UnitTests.Web
 
 		protected internal virtual FederationAuthenticationModule CreateFederationAuthenticationModule(Uri url)
 		{
-			return new FederationAuthenticationModule(Mock.Of<IFormsAuthentication>(), Mock.Of<IFormsAuthenticationTicketFactory>(), Mock.Of<ILog>(), Mock.Of<IRedirectInformationFactory>(), this.CreateWebFacade(url));
+			return new FederationAuthenticationModule(Mock.Of<IFormsAuthentication>(), Mock.Of<IFormsAuthenticationTicketFactory>(), Mock.Of<ILog>(), Mock.Of<IRedirectInformationFactory>(), this.CreateWebFacade(url), Mock.Of<IWindowsFederationIdentityFactory>());
 		}
 
 		protected internal virtual HttpRequestBase CreateHttpRequest(Uri url)

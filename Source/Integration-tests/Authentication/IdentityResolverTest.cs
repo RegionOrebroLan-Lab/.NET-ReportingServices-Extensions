@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RegionOrebroLan.ReportingServices.Authentication;
+using RegionOrebroLan.ReportingServices.Security.Principal;
 using RegionOrebroLan.ReportingServices.Web.Security;
 
 namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
@@ -12,6 +13,7 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 		#region Properties
 
 		protected internal virtual IFormsAuthentication FormsAuthentication { get; } = new FormsAuthenticationWrapper();
+		protected internal virtual IWindowsFederationIdentityFactory WindowsFederationIdentityFactory { get; } = new WindowsFederationIdentityFactory();
 
 		#endregion
 
@@ -19,7 +21,7 @@ namespace RegionOrebroLan.ReportingServices.IntegrationTests.Authentication
 
 		protected internal virtual IdentityResolver CreateDeaultIdentityResolver()
 		{
-			return new IdentityResolver(this.FormsAuthentication);
+			return new IdentityResolver(this.FormsAuthentication, this.WindowsFederationIdentityFactory);
 		}
 
 		[TestMethod]

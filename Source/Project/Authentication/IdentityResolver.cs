@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IdentityModel.Services;
-using System.Security.Claims;
 using System.Security.Principal;
 using log4net;
 using RegionOrebroLan.ReportingServices.Security.Principal;
@@ -20,12 +19,13 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		#region Constructors
 
-		public IdentityResolver(IFormsAuthentication formsAuthentication) : this(formsAuthentication, _log) { }
+		public IdentityResolver(IFormsAuthentication formsAuthentication, IWindowsFederationIdentityFactory windowsFederationIdentityFactory) : this(formsAuthentication, _log, windowsFederationIdentityFactory) { }
 
-		protected internal IdentityResolver(IFormsAuthentication formsAuthentication, ILog log)
+		protected internal IdentityResolver(IFormsAuthentication formsAuthentication, ILog log, IWindowsFederationIdentityFactory windowsFederationIdentityFactory)
 		{
 			this.FormsAuthentication = formsAuthentication ?? throw new ArgumentNullException(nameof(formsAuthentication));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
+			this.WindowsFederationIdentityFactory = windowsFederationIdentityFactory ?? throw new ArgumentNullException(nameof(windowsFederationIdentityFactory));
 		}
 
 		#endregion
@@ -34,6 +34,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		protected internal virtual IFormsAuthentication FormsAuthentication { get; }
 		protected internal virtual ILog Log { get; }
+		protected internal virtual IWindowsFederationIdentityFactory WindowsFederationIdentityFactory { get; }
 
 		#endregion
 
@@ -68,13 +69,7 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 					return null;
 				}
 
-				var windowsIdentity = new WindowsIdentity(ticket.Name);
-
-				return new WindowsFederationIdentity(new[]
-				{
-					new Claim(ClaimTypes.Name, windowsIdentity.Name),
-					new Claim(ClaimTypes.Upn, ticket.Name)
-				});
+				return this.WindowsFederationIdentityFactory.Create(ticket.Name);
 			}
 			catch(Exception exception)
 			{

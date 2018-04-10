@@ -5,7 +5,6 @@ using System.IdentityModel.Services;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Principal;
 using System.Web;
 using log4net;
 using RegionOrebroLan.ReportingServices.Extensions;
@@ -25,15 +24,16 @@ namespace RegionOrebroLan.ReportingServices.Web
 
 		#region Constructors
 
-		public FederationAuthenticationModule() : this(ServiceLocator.Instance.GetService<IFormsAuthentication>(), ServiceLocator.Instance.GetService<IFormsAuthenticationTicketFactory>(), _log, ServiceLocator.Instance.GetService<IRedirectInformationFactory>(), ServiceLocator.Instance.GetService<IWebFacade>()) { }
+		public FederationAuthenticationModule() : this(ServiceLocator.Instance.GetService<IFormsAuthentication>(), ServiceLocator.Instance.GetService<IFormsAuthenticationTicketFactory>(), _log, ServiceLocator.Instance.GetService<IRedirectInformationFactory>(), ServiceLocator.Instance.GetService<IWebFacade>(), ServiceLocator.Instance.GetService<IWindowsFederationIdentityFactory>()) { }
 
-		public FederationAuthenticationModule(IFormsAuthentication formsAuthentication, IFormsAuthenticationTicketFactory formsAuthenticationTicketFactory, ILog log, IRedirectInformationFactory redirectInformationFactory, IWebFacade webFacade)
+		public FederationAuthenticationModule(IFormsAuthentication formsAuthentication, IFormsAuthenticationTicketFactory formsAuthenticationTicketFactory, ILog log, IRedirectInformationFactory redirectInformationFactory, IWebFacade webFacade, IWindowsFederationIdentityFactory windowsFederationIdentityFactory)
 		{
 			this.FormsAuthentication = formsAuthentication ?? throw new ArgumentNullException(nameof(formsAuthentication));
 			this.FormsAuthenticationTicketFactory = formsAuthenticationTicketFactory ?? throw new ArgumentNullException(nameof(formsAuthenticationTicketFactory));
 			this.Log = log ?? throw new ArgumentNullException(nameof(log));
 			this.RedirectInformationFactory = redirectInformationFactory ?? throw new ArgumentNullException(nameof(redirectInformationFactory));
 			this.WebFacade = webFacade ?? throw new ArgumentNullException(nameof(webFacade));
+			this.WindowsFederationIdentityFactory = windowsFederationIdentityFactory ?? throw new ArgumentNullException(nameof(windowsFederationIdentityFactory));
 		}
 
 		#endregion
@@ -60,6 +60,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 		protected internal virtual ILog Log { get; }
 		protected internal virtual IRedirectInformationFactory RedirectInformationFactory { get; }
 		protected internal virtual IWebFacade WebFacade { get; }
+		protected internal virtual IWindowsFederationIdentityFactory WindowsFederationIdentityFactory { get; }
 
 		#endregion
 
@@ -94,13 +95,7 @@ namespace RegionOrebroLan.ReportingServices.Web
 				return;
 			}
 
-			var windowsIdentity = new WindowsIdentity(ticket.Name);
-
-			this.WebFacade.Context.User = new WindowsFederationPrincipal(new WindowsFederationIdentity(new[]
-			{
-				new Claim(ClaimTypes.Name, windowsIdentity.Name),
-				new Claim(ClaimTypes.Upn, ticket.Name)
-			}));
+			this.WebFacade.Context.User = new WindowsFederationPrincipal(this.WindowsFederationIdentityFactory.Create(ticket.Name));
 		}
 
 		protected internal virtual IFormsAuthenticationTicket CreateFormsAuthenticationTicket()
@@ -131,8 +126,6 @@ namespace RegionOrebroLan.ReportingServices.Web
 				return;
 
 			base.OnAuthenticateRequest(sender, e);
-
-			//this.LogDebugIfEnabled("HttpMethod = " + this.WebFacade.Request.HttpMethod + ", Request-cookies = " + string.Join(", ", this.WebFacade.Request.Cookies.AllKeys) + ", Response-cookies = " + string.Join(", ", this.WebFacade.Response.Cookies.AllKeys) + ", Url = " + this.WebFacade.Request.Url, "OnAuthenticateRequest");
 
 			if(this.WebFacade.User != null)
 			{
