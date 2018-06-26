@@ -1,5 +1,14 @@
 # .NET-ReportingServices-Extensions
 
+# IMPORTANT!
+
+Support for **Microsoft SQL Server 2016 Reporting Services** does not work yet, see: [Version 13 for Reporting Services 2016 does not work](/issues/1/)
+
+Also - when this solution is considered stable this repository will move to https://github.com/RegionOrebroLan/.
+
+=======================================
+=======================================
+
 Extensions/additions for SQL Server Reporting Services.
 
 For the moment three versions: 13, 14, 15
