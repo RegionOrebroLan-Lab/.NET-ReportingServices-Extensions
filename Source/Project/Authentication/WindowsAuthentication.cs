@@ -55,6 +55,25 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 			return identity.Name;
 		}
 
+		protected internal virtual string GetMaskedValue(string value)
+		{
+			var maskedValue = value;
+
+			// ReSharper disable InvertIf
+			if(!string.IsNullOrEmpty(value))
+			{
+				maskedValue = string.Empty;
+
+				for(var i = 0; i < value.Length; i++)
+				{
+					maskedValue += "*";
+				}
+			}
+			// ReSharper restore InvertIf
+
+			return maskedValue;
+		}
+
 		public virtual void GetUserInfo(out IIdentity userIdentity, out IntPtr userId)
 		{
 			userId = IntPtr.Zero;
@@ -153,9 +172,9 @@ namespace RegionOrebroLan.ReportingServices.Authentication
 
 		public virtual bool LogonUser(string userName, string password, string authority)
 		{
-			this.LogErrorIfEnabled("The method is not implemented.", "LogonUser");
+			this.LogDebugIfEnabled($"userName = \"{userName}\", password = \"{this.GetMaskedValue(password)}\", authority = \"{authority}\"", "LogonUser");
 
-			throw new NotImplementedException();
+			return false;
 		}
 
 		public virtual byte[] PrincipalNameToSid(string name)
